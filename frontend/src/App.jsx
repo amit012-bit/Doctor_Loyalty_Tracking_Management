@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
+import TopNav from './components/TopNav'
 import LoyaltyRewardOverview from './components/LoyaltyRewardOverview'
 import Settings from './components/Settings'
 import './App.css'
@@ -72,6 +73,7 @@ function App() {
         userRole={user?.role}
         onLogout={handleLogout}
       />
+      <TopNav user={user} />
       <main className="main-content">
         {renderContent()}
       </main>

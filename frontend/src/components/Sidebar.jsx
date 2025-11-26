@@ -18,7 +18,7 @@ function Sidebar({ activeItem, onItemClick, userRole, onLogout }) {
 
   return (
     <aside className="sidebar">
-      <h2 className="sidebar-title">Admin Panel</h2>
+      <h2 className="sidebar-title">RewardTrust</h2>
       <nav className="sidebar-nav">
         {menuItems.map((item) => (
           <div

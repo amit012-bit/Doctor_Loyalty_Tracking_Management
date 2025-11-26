@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './Login.css'
 import { loginUser } from '../services/User'
+import { Mail, Lock, LogIn, Shield, CheckCircle2, Package } from 'lucide-react'
 
 function Login({ onLogin }) {
   const [formData, setFormData] = useState({
@@ -16,7 +17,6 @@ function Login({ onLogin }) {
       ...prev,
       [name]: value
     }))
-    // Clear error when user starts typing
     if (error) setError('')
   }
 
@@ -27,14 +27,11 @@ function Login({ onLogin }) {
 
     try {
       const response = await loginUser(formData.email, formData.password)
-      console.log(response, '------response------')
 
       if (response.status === 200 && response.data.success) {
-        // Store user data and token in localStorage
         localStorage.setItem('user', JSON.stringify(response.data.data.user))
         localStorage.setItem('token', response.data.data.token)
         
-        // Call onLogin callback if provided
         if (onLogin) {
           onLogin(response.data.data)
         }
@@ -55,61 +52,114 @@ function Login({ onLogin }) {
 
   return (
     <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <h1 className="login-title">Sign In</h1>
-          <p className="login-subtitle">Enter your credentials to access your account</p>
+      <div className="login-wrapper">
+        {/* Left Side - Illustration */}
+        <div className="login-illustration">
+          <div className="illustration-content">
+            <div className="logo-section">
+              <div className="logo-icon-large">RT</div>
+              <h1 className="logo-text-large">RewardTrust</h1>
+            </div>
+            <h2 className="welcome-title">Welcome Back!</h2>
+            <p className="welcome-subtitle">
+              Secure delivery management for doctor loyalty rewards. Building trust and compliance between doctors and hospital executives.
+            </p>
+            <div className="illustration-features">
+              <div className="feature-item">
+                <div className="feature-icon">
+                  <Shield size={24} />
+                </div>
+                <span>Trust & Compliance</span>
+              </div>
+              <div className="feature-item">
+                <div className="feature-icon">
+                  <Package size={24} />
+                </div>
+                <span>Secure Delivery</span>
+              </div>
+              <div className="feature-item">
+                <div className="feature-icon">
+                  <CheckCircle2 size={24} />
+                </div>
+                <span>Executive Management</span>
+              </div>
+            </div>
+            <div className="floating-shapes">
+              <div className="shape shape-1"></div>
+              <div className="shape shape-2"></div>
+              <div className="shape shape-3"></div>
+            </div>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
-          {error && (
-            <div className="login-error">
-              {error}
+        {/* Right Side - Login Form */}
+        <div className="login-form-section">
+          <div className="login-card">
+            <div className="login-header">
+              <h1 className="login-title">Sign In</h1>
+              <p className="login-subtitle">Enter your credentials to access your account</p>
             </div>
-          )}
 
-          <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              Email Address
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Enter your email"
-              required
-              autoComplete="email"
-            />
+            <form onSubmit={handleSubmit} className="login-form">
+              {error && (
+                <div className="login-error">
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label htmlFor="email" className="form-label">
+                  <Mail size={18} />
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="Enter your email"
+                  required
+                  autoComplete="email"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="password" className="form-label">
+                  <Lock size={18} />
+                  Password
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="Enter your password"
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="login-button"
+                disabled={loading}
+              >
+                {loading ? (
+                  'Signing in...'
+                ) : (
+                  <>
+                    <LogIn size={20} />
+                    Sign In
+                  </>
+                )}
+              </button>
+            </form>
           </div>
-
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Enter your password"
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="login-button"
-            disabled={loading}
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
+        </div>
       </div>
     </div>
   )
