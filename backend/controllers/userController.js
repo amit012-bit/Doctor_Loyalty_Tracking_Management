@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import { getAllLocations } from '../constants/locations.js';
 
 /**
  * Generate JWT token
@@ -230,22 +229,4 @@ export const deleteUser = async (req, res, next) => {
   }
 };
 
-/**
- * Get all available locations
- * @route GET /api/users/locations
- */
-export const getLocations = async (req, res, next) => {
-  try {
-    const locations = getAllLocations();
-
-    res.json({
-      success: true,
-      count: locations.length,
-      data: { locations }
-    });
-
-  } catch (error) {
-    next(error);
-  }
-};
 

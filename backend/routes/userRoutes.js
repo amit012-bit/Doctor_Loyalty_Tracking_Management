@@ -7,8 +7,7 @@ import {
   getUsers,
   getUserById,
   updateUser,
-  deleteUser,
-  getLocations
+  deleteUser
 } from '../controllers/userController.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
@@ -103,13 +102,6 @@ router.put(
  * @access  Private
  */
 router.delete('/me', authenticate, deleteUser);
-
-/**
- * @route   GET /api/users/locations
- * @desc    Get all available locations
- * @access  Public
- */
-router.get('/locations', getLocations);
 
 /**
  * @route   GET /api/users

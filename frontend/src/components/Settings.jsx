@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import './Settings.css'
-import { Plus, X, CheckCircle2 } from 'lucide-react'
-import { registerUser, getLocations } from '../services/User'
+import { registerUser } from '../services/User'
+import { getLocations } from '../services/Location'
 
 function Settings({ currentUser }) {
   const [locations, setLocations] = useState([])
@@ -21,9 +21,9 @@ function Settings({ currentUser }) {
       try {
         const response = await getLocations()
         if (response.data.success) {
-          setLocations(response.data.data.locations)
+          setLocations(response.data.data.locations || [])
           if (response.data.data.locations.length > 0 && !formData.locationId) {
-            setFormData(prev => ({ ...prev, locationId: response.data.data.locations[0].id }))
+            setFormData(prev => ({ ...prev, locationId: response.data.data.locations[0]._id }))
           }
         }
       } catch (err) {
@@ -59,7 +59,7 @@ function Settings({ currentUser }) {
           email: '',
           password: '',
           role: 'doctor',
-          locationId: locations.length > 0 ? locations[0].id : ''
+          locationId: locations.length > 0 ? locations[0]._id : ''
         })
       } else {
         setError(response.data?.message || 'Failed to create user')
@@ -88,13 +88,17 @@ function Settings({ currentUser }) {
         <form onSubmit={handleSubmit} className="add-user-form">
           {error && (
             <div className="form-message form-error">
-              <X size={18} />
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13.5 4.5L4.5 13.5M4.5 4.5L13.5 13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
               <span>{error}</span>
             </div>
           )}
           {success && (
             <div className="form-message form-success">
-              <CheckCircle2 size={18} />
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 4.5L6.75 12.75L3 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
               <span>{success}</span>
             </div>
           )}
@@ -164,6 +168,8 @@ function Settings({ currentUser }) {
                 <option value="doctor">Doctor</option>
                 <option value="executive">Executive</option>
                 <option value="admin">Admin</option>
+                <option value="superadmin">Super Admin</option>
+                <option value="accountant">Accountant</option>
               </select>
             </div>
 
@@ -181,7 +187,7 @@ function Settings({ currentUser }) {
               >
                 <option value="">Select Location</option>
                 {locations.map((location) => (
-                  <option key={location.id} value={location.id}>
+                  <option key={location._id} value={location._id}>
                     {location.name}
                   </option>
                 ))}
@@ -198,7 +204,9 @@ function Settings({ currentUser }) {
               'Creating User...'
             ) : (
               <>
-                <Plus size={18} />
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 3.5V14.5M3.5 9H14.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
                 Create User
               </>
             )}
@@ -210,4 +218,3 @@ function Settings({ currentUser }) {
 }
 
 export default Settings
-

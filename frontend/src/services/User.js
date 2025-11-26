@@ -30,9 +30,5 @@ export const loginUser = async (email, password) => {
 }
 
 export const registerUser = async (userData) => {
-    return await axios.post(ENDPOINT_URL.REGISTER, userData);
-}
-
-export const getLocations = async () => {
-    return await axios.get(ENDPOINT_URL.LOCATIONS);
+    return await api.post(ENDPOINT_URL.REGISTER, userData);
 }

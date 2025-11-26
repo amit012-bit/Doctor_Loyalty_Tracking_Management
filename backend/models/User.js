@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { getLocationIds } from '../constants/locations.js';
 
 /**
  * User Schema
@@ -30,15 +29,12 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'doctor', 'executive'],
+    enum: ['admin', 'doctor', 'executive', 'superadmin', 'accountant'],
     required: [true, 'Role is required']
   },
   locationId: {
-    type: String,
-    enum: {
-      values: getLocationIds(),
-      message: 'Invalid location ID'
-    },
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Location',
     required: [true, 'Location ID is required']
   }
 }, {
