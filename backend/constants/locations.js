@@ -6,18 +6,15 @@
 export const LOCATIONS = {
   LOCATION_1: {
     id: '1',
-    name: 'Location 1',
-    address: 'Address for Location 1'
+    name: 'Mandya',
   },
   LOCATION_2: {
     id: '2',
-    name: 'Location 2',
-    address: 'Address for Location 2'
+    name: 'Ramanagara'
   },
   LOCATION_3: {
     id: '3',
-    name: 'Location 3',
-    address: 'Address for Location 3'
+    name: 'K R Pete'
   }
 };
 

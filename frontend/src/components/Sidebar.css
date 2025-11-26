@@ -5,6 +5,8 @@
   padding: 24px 16px;
   box-sizing: border-box;
   font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-title {
@@ -53,5 +55,20 @@
   font-size: 14px;
   font-weight: 400;
   color: #333;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.logout-item {
+  color: #dc2626;
+}
+
+.logout-item:hover {
+  background-color: #fee2e2;
+  color: #991b1b;
 }
 

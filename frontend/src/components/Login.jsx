@@ -30,15 +30,23 @@ function Login({ onLogin }) {
       console.log(response, '------response------')
 
       if (response.status === 200 && response.data.success) {
+        // Store user data and token in localStorage
+        localStorage.setItem('user', JSON.stringify(response.data.data.user))
+        localStorage.setItem('token', response.data.data.token)
+        
         // Call onLogin callback if provided
         if (onLogin) {
-          onLogin(response.data)
+          onLogin(response.data.data)
         }
       } else {
-        setError(data.message || 'Login failed. Please try again.')
+        setError(response.data?.message || 'Login failed. Please try again.')
       }
     } catch (err) {
-      setError('Network error. Please check your connection and try again.')
+      if (err.response?.data?.message) {
+        setError(err.response.data.message)
+      } else {
+        setError('Network error. Please check your connection and try again.')
+      }
       console.error('Login error:', err)
     } finally {
       setLoading(false)
