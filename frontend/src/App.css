@@ -1,0 +1,27 @@
+.app-container {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.content-placeholder {
+  padding: 32px;
+  text-align: center;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.content-placeholder h2 {
+  font-size: 24px;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.content-placeholder p {
+  color: #6b7280;
+  font-size: 16px;
+}
