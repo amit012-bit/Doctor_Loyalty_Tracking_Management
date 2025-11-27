@@ -468,7 +468,25 @@ function LoyaltyRewardOverview() {
                     >
                       <td>{transaction.doctorId?.name || 'N/A'}</td>
                       <td>
-                        {transaction.executiveId?.name || (
+                        {transaction.status === 'pending' && !transaction.executiveId ? (
+                          <select
+                            className="assign-executive-select"
+                            value={selectedExecutive[transaction._id] || ''}
+                            onChange={(e) => setSelectedExecutive(prev => ({
+                              ...prev,
+                              [transaction._id]: e.target.value
+                            }))}
+                            disabled={assigningExecutive === transaction._id}
+                            style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #E5E7EB', fontSize: '14px' }}
+                          >
+                            <option value="">Select Executive</option>
+                            {executives.map((exec) => (
+                              <option key={exec._id} value={exec._id}>
+                                {exec.name}
+                              </option>
+                            ))}
+                          </select>
+                        ) : transaction.executiveId?.name || (
                           transaction.status === 'pending' ? (
                             <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Not assigned</span>
                           ) : 'N/A'
@@ -481,32 +499,14 @@ function LoyaltyRewardOverview() {
                       <td>{formatDate(transaction.deliveryDate)}</td>
                       <td>
                         {transaction.status === 'pending' && !transaction.executiveId ? (
-                          <div className="assign-executive-container">
-                            <select
-                              className="assign-executive-select"
-                              value={selectedExecutive[transaction._id] || ''}
-                              onChange={(e) => setSelectedExecutive(prev => ({
-                                ...prev,
-                                [transaction._id]: e.target.value
-                              }))}
-                              disabled={assigningExecutive === transaction._id}
-                            >
-                              <option value="">Select Executive</option>
-                              {executives.map((exec) => (
-                                <option key={exec._id} value={exec._id}>
-                                  {exec.name}
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              className="assign-executive-btn"
-                              onClick={() => handleAssignExecutive(transaction._id)}
-                              disabled={!selectedExecutive[transaction._id] || assigningExecutive === transaction._id}
-                            >
-                              <UserPlus size={14} />
-                              {assigningExecutive === transaction._id ? 'Assigning...' : 'Assign'}
-                            </button>
-                          </div>
+                          <button
+                            className="assign-executive-btn"
+                            onClick={() => handleAssignExecutive(transaction._id)}
+                            disabled={!selectedExecutive[transaction._id] || assigningExecutive === transaction._id}
+                          >
+                            <UserPlus size={14} />
+                            {assigningExecutive === transaction._id ? 'Assigning...' : 'Assign'}
+                          </button>
                         ) : transaction.status !== 'pending' ? (
                           <button
                             className={isInProgress(transaction.status) ? "verify-otp-btn" : "view-details-btn"}
