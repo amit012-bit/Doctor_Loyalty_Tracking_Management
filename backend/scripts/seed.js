@@ -114,7 +114,7 @@ const seedData = async () => {
     console.log('💰 Creating transactions...');
     const transactions = [];
     
-    const statuses = ['completed', 'IN progress', 'pending', 'started'];
+    const statuses = ['completed', 'IN progress', 'pending'];
     const paymentModes = ['Cash', 'Online Transfer'];
     const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
     const currentYear = new Date().getFullYear();

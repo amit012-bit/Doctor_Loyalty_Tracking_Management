@@ -1,18 +1,29 @@
 import { useState, useEffect } from 'react'
 import './LoyaltyRewardOverview.css'
-import { getTransactions, getTransactionStatistics } from '../services/Transaction'
+import { getTransactions, getTransactionStatistics, assignExecutive, verifyOTP } from '../services/Transaction'
 import { getLocations } from '../services/Location'
+import { getUsers } from '../services/User'
+import CreateTransactionModal from './CreateTransactionModal'
+import { Plus, UserPlus, Eye, ChevronDown, ChevronUp, Shield } from 'lucide-react'
 
 function LoyaltyRewardOverview() {
   const [user, setUser] = useState(null)
   const [transactions, setTransactions] = useState([])
   const [statistics, setStatistics] = useState(null)
   const [locations, setLocations] = useState([])
+  const [executives, setExecutives] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [assigningExecutive, setAssigningExecutive] = useState(null)
+  const [selectedExecutive, setSelectedExecutive] = useState({})
+  const [expandedRows, setExpandedRows] = useState(new Set())
+  const [otpValues, setOtpValues] = useState({})
+  const [verifyingOtp, setVerifyingOtp] = useState(null)
+  const [otpErrors, setOtpErrors] = useState({})
   const itemsPerPage = 10
 
   useEffect(() => {
@@ -26,39 +37,74 @@ function LoyaltyRewardOverview() {
     }
   }, [])
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        setError('')
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      setError('')
 
-        const [transactionsRes, statsRes, locationsRes] = await Promise.all([
+        const [transactionsRes, statsRes, locationsRes, usersRes] = await Promise.all([
           getTransactions({ status: statusFilter || undefined }),
           getTransactionStatistics(),
-          getLocations()
+          getLocations(),
+          getUsers()
         ])
 
-        if (transactionsRes.data.success) {
-          setTransactions(transactionsRes.data.data.transactions || [])
-        }
+      if (transactionsRes.data.success) {
+        setTransactions(transactionsRes.data.data.transactions || [])
+      }
 
-        if (statsRes.data.success) {
-          setStatistics(statsRes.data.data.statistics)
-        }
+      if (statsRes.data.success) {
+        setStatistics(statsRes.data.data.statistics)
+      }
 
         if (locationsRes.data.success) {
           setLocations(locationsRes.data.data.locations || [])
         }
-      } catch (err) {
-        console.error('Error fetching data:', err)
-        setError(err.response?.data?.message || 'Failed to fetch data. Please try again.')
-      } finally {
-        setLoading(false)
-      }
-    }
 
+        if (usersRes?.data?.success) {
+          const users = usersRes.data.data.users || []
+          setExecutives(users.filter(u => u.role === 'executive'))
+        }
+    } catch (err) {
+      console.error('Error fetching data:', err)
+      setError(err.response?.data?.message || 'Failed to fetch data. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     fetchData()
   }, [statusFilter])
+
+  const handleTransactionCreated = () => {
+    fetchData()
+  }
+
+  const handleAssignExecutive = async (transactionId) => {
+    const execId = selectedExecutive[transactionId]
+    if (!execId) {
+      setError('Please select an executive')
+      return
+    }
+
+    try {
+      setAssigningExecutive(transactionId)
+      const response = await assignExecutive(transactionId, execId)
+      if (response.data.success) {
+        fetchData()
+        setSelectedExecutive(prev => {
+          const newState = { ...prev }
+          delete newState[transactionId]
+          return newState
+        })
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to assign executive')
+    } finally {
+      setAssigningExecutive(null)
+    }
+  }
 
   const formatCurrency = (amount) => {
     return `₹${amount.toLocaleString('en-IN')}`
@@ -70,12 +116,105 @@ function LoyaltyRewardOverview() {
     return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })
   }
 
+  const formatDateTime = (date) => {
+    if (!date) return 'N/A'
+    return new Date(date).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const toggleRowExpansion = (transactionId) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(transactionId)) {
+        newSet.delete(transactionId)
+      } else {
+        newSet.add(transactionId)
+      }
+      return newSet
+    })
+  }
+
+  const handleVerifyOtp = async (transactionId) => {
+    const otp = otpValues[transactionId]
+    if (!otp || otp.length !== 6) {
+      setOtpErrors(prev => ({
+        ...prev,
+        [transactionId]: 'Please enter a valid 6-digit OTP'
+      }))
+      return
+    }
+
+    try {
+      setVerifyingOtp(transactionId)
+      setOtpErrors(prev => {
+        const newState = { ...prev }
+        delete newState[transactionId]
+        return newState
+      })
+      
+      const response = await verifyOTP(transactionId, otp)
+      
+      if (response.data.success) {
+        // OTP verified successfully, refresh data to get updated status
+        await fetchData()
+        setOtpValues(prev => {
+          const newState = { ...prev }
+          delete newState[transactionId]
+          return newState
+        })
+        setExpandedRows(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(transactionId)
+          return newSet
+        })
+      }
+    } catch (err) {
+      // Show error message from API
+      const errorMessage = err.response?.data?.message || 'Failed to verify OTP. Please try again.'
+      setOtpErrors(prev => ({
+        ...prev,
+        [transactionId]: errorMessage
+      }))
+      // Keep the row expanded so user can try again
+    } finally {
+      setVerifyingOtp(null)
+    }
+  }
+
+  const isInProgress = (status) => {
+    return status?.toLowerCase() === 'in_progress' || status === 'IN progress' || status?.toLowerCase() === 'in progress'
+  }
+
+  const getStatusNotification = (status) => {
+    const statusLower = status?.toLowerCase()
+    // Don't show notification for in_progress - show OTP input instead
+    if (statusLower === 'completed') {
+      return {
+        message: 'Cash delivered and OTP verified',
+        type: 'success',
+        icon: '✅'
+      }
+    }
+    if (statusLower === 'pending') {
+      return {
+        message: 'Waiting for executive assignment',
+        type: 'warning',
+        icon: '⏳'
+      }
+    }
+    return null
+  }
+
   const getStatusBadge = (status) => {
     const statusConfig = {
-      'IN progress': { color: '#3B82F6', bgColor: '#DBEAFE' },
       'pending': { color: '#FB923C', bgColor: '#FED7AA' },
+      'in_progress': { color: '#3B82F6', bgColor: '#DBEAFE' },
       'completed': { color: '#14B8A6', bgColor: '#DCFCE7' },
-      'started': { color: '#8B5CF6', bgColor: '#E9D5FF' }
     }
 
     const config = statusConfig[status?.toLowerCase()] || statusConfig['pending']
@@ -241,6 +380,13 @@ function LoyaltyRewardOverview() {
         <div className="card-header">
           <h2 className="card-title">Loyalty Reward Management</h2>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <button 
+              className="create-transaction-btn"
+              onClick={() => setIsModalOpen(true)}
+            >
+              <Plus size={16} />
+              Create Transaction
+          </button>
             <div className="search-container" style={{ position: 'relative' }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ 
                 position: 'absolute', 
@@ -251,11 +397,11 @@ function LoyaltyRewardOverview() {
               }}>
                 <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
                 <path d="M11 11L14.5 14.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-              <input 
-                type="text" 
-                placeholder="Search by doctor or executive..." 
-                value={searchQuery}
+            </svg>
+            <input
+              type="text"
+              placeholder="Search by doctor or executive..."
+              value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value)
                   setCurrentPage(1) // Reset to page 1 on search
@@ -267,9 +413,9 @@ function LoyaltyRewardOverview() {
                   fontSize: '14px',
                   width: '250px'
                 }}
-              />
-            </div>
-            <select 
+            />
+          </div>
+            <select
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value)
@@ -301,27 +447,182 @@ function LoyaltyRewardOverview() {
                 <th>Month/Year</th>
                 <th>Status</th>
                 <th>Delivery Date</th>
+                <th>Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className={expandedRows.size > 0 ? 'has-expanded-row' : ''}>
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>
                     {loading ? 'Loading...' : 'No transactions found'}
                   </td>
                 </tr>
               ) : (
-                paginatedTransactions.map((transaction) => (
-                  <tr key={transaction._id}>
-                    <td>{transaction.doctorId?.name || 'N/A'}</td>
-                    <td>{transaction.executiveId?.name || 'N/A'}</td>
-                    <td>{formatCurrency(transaction.amount)}</td>
-                    <td>{transaction.paymentMode}</td>
-                    <td>{transaction.monthYear}</td>
-                    <td>{getStatusBadge(transaction.status)}</td>
-                    <td>{formatDate(transaction.deliveryDate)}</td>
-                  </tr>
-                ))
+                paginatedTransactions.map((transaction) => {
+                  const isExpanded = expandedRows.has(transaction._id)
+                  return (
+                  <>
+                    <tr 
+                      key={transaction._id}
+                      className={isExpanded ? 'active-row' : ''}
+                    >
+                      <td>{transaction.doctorId?.name || 'N/A'}</td>
+                      <td>
+                        {transaction.executiveId?.name || (
+                          transaction.status === 'pending' ? (
+                            <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Not assigned</span>
+                          ) : 'N/A'
+                        )}
+                      </td>
+                      <td>{formatCurrency(transaction.amount)}</td>
+                      <td>{transaction.paymentMode}</td>
+                      <td>{transaction.monthYear}</td>
+                      <td>{getStatusBadge(transaction.status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '))}</td>
+                      <td>{formatDate(transaction.deliveryDate)}</td>
+                      <td>
+                        {transaction.status === 'pending' && !transaction.executiveId ? (
+                          <div className="assign-executive-container">
+                            <select
+                              className="assign-executive-select"
+                              value={selectedExecutive[transaction._id] || ''}
+                              onChange={(e) => setSelectedExecutive(prev => ({
+                                ...prev,
+                                [transaction._id]: e.target.value
+                              }))}
+                              disabled={assigningExecutive === transaction._id}
+                            >
+                              <option value="">Select Executive</option>
+                              {executives.map((exec) => (
+                                <option key={exec._id} value={exec._id}>
+                                  {exec.name}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              className="assign-executive-btn"
+                              onClick={() => handleAssignExecutive(transaction._id)}
+                              disabled={!selectedExecutive[transaction._id] || assigningExecutive === transaction._id}
+                            >
+                              <UserPlus size={14} />
+                              {assigningExecutive === transaction._id ? 'Assigning...' : 'Assign'}
+                            </button>
+                          </div>
+                        ) : transaction.status !== 'pending' ? (
+                          <button
+                            className={isInProgress(transaction.status) ? "verify-otp-btn" : "view-details-btn"}
+                            onClick={() => toggleRowExpansion(transaction._id)}
+                          >
+                            {isInProgress(transaction.status) ? (
+                              <>
+                                <Shield size={14} />
+                                <span>{expandedRows.has(transaction._id) ? 'Hide' : 'Verify OTP'}</span>
+                                {expandedRows.has(transaction._id) && <ChevronUp size={14} />}
+                              </>
+                            ) : (
+                              <>
+                                <Eye size={14} />
+                                {expandedRows.has(transaction._id) ? (
+                                  <>
+                                    <span>Hide Details</span>
+                                    <ChevronUp size={14} />
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>View Details</span>
+                                    <ChevronDown size={14} />
+                                  </>
+                                )}
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <span style={{ color: '#9CA3AF' }}>-</span>
+                        )}
+                      </td>
+                    </tr>
+                    {expandedRows.has(transaction._id) && transaction.status !== 'pending' && (
+                      <tr className="expanded-row" key={`${transaction._id}-expanded`}>
+                        <td colSpan="8" className="expanded-cell">
+                          <div className="transaction-details">
+                            {isInProgress(transaction.status) ? (
+                              <div className="otp-verification-section">
+                                <div className="otp-header">
+                                  <Shield size={20} />
+                                  <h3>Verify OTP</h3>
+                                  <p className="otp-hint">Enter the 6-digit OTP sent to the doctor</p>
+                                </div>
+                                {otpErrors[transaction._id] && (
+                                  <div className="otp-error-message">
+                                    {otpErrors[transaction._id]}
+                                  </div>
+                                )}
+                                <div className="otp-input-container">
+                                  <input
+                                    type="text"
+                                    className={`otp-input ${otpErrors[transaction._id] ? 'otp-input-error' : ''}`}
+                                    placeholder="Enter 6-digit OTP"
+                                    maxLength={6}
+                                    value={otpValues[transaction._id] || ''}
+                                    onChange={(e) => {
+                                      const value = e.target.value.replace(/\D/g, '') // Only numbers
+                                      setOtpValues(prev => ({
+                                        ...prev,
+                                        [transaction._id]: value
+                                      }))
+                                      // Clear error when user starts typing
+                                      if (otpErrors[transaction._id]) {
+                                        setOtpErrors(prev => {
+                                          const newState = { ...prev }
+                                          delete newState[transaction._id]
+                                          return newState
+                                        })
+                                      }
+                                    }}
+                                    disabled={verifyingOtp === transaction._id}
+                                  />
+                                  <button
+                                    className="verify-otp-submit-btn"
+                                    onClick={() => handleVerifyOtp(transaction._id)}
+                                    disabled={!otpValues[transaction._id] || otpValues[transaction._id].length !== 6 || verifyingOtp === transaction._id}
+                                  >
+                                    {verifyingOtp === transaction._id ? 'Verifying...' : 'Verify OTP'}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="details-grid">
+                                <div className="detail-item">
+                                  <span className="detail-label">Transaction Initiated On:</span>
+                                  <span className="detail-value">
+                                    {formatDateTime(transaction.createdAt)}
+                                  </span>
+                                </div>
+                                <div className="detail-item">
+                                  <span className="detail-label">Cash Delivered On:</span>
+                                  <span className="detail-value">
+                                    {formatDateTime(transaction.deliveryDate)}
+                                  </span>
+                                </div>
+                                
+                                {getStatusNotification(transaction.status) && (
+                                  <div className={`status-notification ${getStatusNotification(transaction.status).type}`}>
+                                    <span className="notification-icon">
+                                      {getStatusNotification(transaction.status).icon}
+                                    </span>
+                                    <span className="notification-message">
+                                      {getStatusNotification(transaction.status).message}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                  )
+                })
               )}
             </tbody>
           </table>
@@ -383,6 +684,13 @@ function LoyaltyRewardOverview() {
           </div>
         )}
       </div>
+
+      {/* Create Transaction Modal */}
+      <CreateTransactionModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={handleTransactionCreated}
+      />
     </div>
   )
 }

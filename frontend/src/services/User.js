@@ -32,3 +32,7 @@ export const loginUser = async (email, password) => {
 export const registerUser = async (userData) => {
     return await api.post(ENDPOINT_URL.REGISTER, userData);
 }
+
+export const getUsers = async () => {
+    return await api.get(ENDPOINT_URL.USERS);
+}

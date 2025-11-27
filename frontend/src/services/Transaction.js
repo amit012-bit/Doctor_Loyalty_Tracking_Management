@@ -36,3 +36,29 @@ export const getTransactionById = async (id) => {
   });
 };
 
+export const createTransaction = async (transactionData) => {
+  return await axios.post(ENDPOINT_URL.TRANSACTIONS, transactionData, {
+    headers: getAuthHeaders()
+  });
+};
+
+export const assignExecutive = async (transactionId, executiveId) => {
+  return await axios.patch(`${ENDPOINT_URL.TRANSACTIONS}/${transactionId}/assign-executive`, 
+    { executiveId },
+    { headers: getAuthHeaders() }
+  );
+};
+
+export const updateTransaction = async (transactionId, updateData) => {
+  return await axios.put(`${ENDPOINT_URL.TRANSACTIONS}/${transactionId}`, updateData, {
+    headers: getAuthHeaders()
+  });
+};
+
+export const verifyOTP = async (transactionId, otp) => {
+  return await axios.patch(`${ENDPOINT_URL.TRANSACTIONS}/${transactionId}/verify-otp`, 
+    { otp },
+    { headers: getAuthHeaders() }
+  );
+};
+

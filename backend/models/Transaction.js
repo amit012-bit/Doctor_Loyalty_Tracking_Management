@@ -13,7 +13,8 @@ const transactionSchema = new mongoose.Schema({
   executiveId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Executive ID is required']
+    required: false,
+    default: null
   },
   locationId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -37,12 +38,18 @@ const transactionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['started', 'IN progress', 'pending', 'completed'],
+    enum: ['pending', 'in_progress', 'completed'],
     default: 'pending'
   },
   deliveryDate: {
     type: Date,
     default: null
+  },
+  otp: {
+    type: String,
+    default: null,
+    minlength: [6, 'OTP must be 6 digits'],
+    maxlength: [6, 'OTP must be 6 digits']
   }
 }, {
   timestamps: true

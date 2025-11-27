@@ -12,25 +12,8 @@ import { validate } from '../middleware/validation.js';
 
 const router = express.Router();
 
-/**
- * @route   GET /api/locations
- * @desc    Get all locations
- * @access  Public
- */
 router.get('/', getLocations);
-
-/**
- * @route   GET /api/locations/:id
- * @desc    Get location by ID
- * @access  Public
- */
 router.get('/:id', getLocationById);
-
-/**
- * @route   POST /api/locations
- * @desc    Create new location
- * @access  Private/Admin
- */
 router.post(
   '/',
   authenticate,
@@ -52,12 +35,6 @@ router.post(
   validate,
   createLocation
 );
-
-/**
- * @route   PUT /api/locations/:id
- * @desc    Update location
- * @access  Private/Admin
- */
 router.put(
   '/:id',
   authenticate,
@@ -81,12 +58,6 @@ router.put(
   validate,
   updateLocation
 );
-
-/**
- * @route   DELETE /api/locations/:id
- * @desc    Delete location
- * @access  Private/Admin
- */
 router.delete('/:id', authenticate, authorize('admin', 'superadmin'), deleteLocation);
 
 export default router;

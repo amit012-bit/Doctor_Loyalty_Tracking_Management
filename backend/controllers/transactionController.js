@@ -1,9 +1,5 @@
 import Transaction from '../models/Transaction.js';
 
-/**
- * Get all transactions with filters and pagination
- * @route GET /api/transactions
- */
 export const getTransactions = async (req, res, next) => {
   try {
     const { status, locationId, doctorId, executiveId, monthYear } = req.query;
@@ -31,10 +27,6 @@ export const getTransactions = async (req, res, next) => {
   }
 };
 
-/**
- * Get transaction statistics
- * @route GET /api/transactions/statistics
- */
 export const getTransactionStatistics = async (req, res, next) => {
   try {
     const stats = await Transaction.aggregate([
@@ -63,19 +55,16 @@ export const getTransactionStatistics = async (req, res, next) => {
       delivered: { count: 0, amount: 0 },
       inProgress: { count: 0, amount: 0 },
       pending: { count: 0, amount: 0 },
-      started: { count: 0, amount: 0 },
       cashInHand: totalCash[0]?.total || 0
     };
 
     stats.forEach(stat => {
       if (stat._id === 'completed') {
         result.delivered = { count: stat.count, amount: stat.totalAmount };
-      } else if (stat._id === 'IN progress') {
+      } else if (stat._id === 'in_progress') {
         result.inProgress = { count: stat.count, amount: stat.totalAmount };
       } else if (stat._id === 'pending') {
         result.pending = { count: stat.count, amount: stat.totalAmount };
-      } else if (stat._id === 'started') {
-        result.started = { count: stat.count, amount: stat.totalAmount };
       }
     });
 
@@ -88,10 +77,6 @@ export const getTransactionStatistics = async (req, res, next) => {
   }
 };
 
-/**
- * Get transaction by ID
- * @route GET /api/transactions/:id
- */
 export const getTransactionById = async (req, res, next) => {
   try {
     const transaction = await Transaction.findById(req.params.id)
@@ -115,10 +100,10 @@ export const getTransactionById = async (req, res, next) => {
   }
 };
 
-/**
- * Create new transaction
- * @route POST /api/transactions
- */
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
 export const createTransaction = async (req, res, next) => {
   try {
     const {
@@ -132,15 +117,23 @@ export const createTransaction = async (req, res, next) => {
       deliveryDate
     } = req.body;
 
+    // Set status based on whether executive is assigned
+    // If executive is assigned -> in_progress, if not -> pending
+    const finalStatus = status || (executiveId ? 'in_progress' : 'pending');
+
+    // Generate OTP if status is in_progress
+    const otp = finalStatus === 'in_progress' ? generateOTP() : null;
+
     const transaction = await Transaction.create({
       doctorId,
-      executiveId,
+      executiveId: executiveId || null, // Allow null for pending transactions
       locationId,
       amount,
       paymentMode,
       monthYear,
-      status: status || 'pending',
-      deliveryDate: deliveryDate || null
+      status: finalStatus,
+      deliveryDate: deliveryDate || null,
+      otp: otp
     });
 
     const populatedTransaction = await Transaction.findById(transaction._id)
@@ -158,10 +151,75 @@ export const createTransaction = async (req, res, next) => {
   }
 };
 
-/**
- * Update transaction
- * @route PUT /api/transactions/:id
- */
+export const verifyOTP = async (req, res, next) => {
+  try {
+    const { otp } = req.body;
+    const transactionId = req.params.id;
+
+    if (!otp || otp.length !== 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid 6-digit OTP'
+      });
+    }
+
+    // Find the transaction
+    const transaction = await Transaction.findById(transactionId);
+
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: 'Transaction not found'
+      });
+    }
+
+    // Check if transaction is in_progress
+    if (transaction.status !== 'in_progress') {
+      return res.status(400).json({
+        success: false,
+        message: 'OTP can only be verified for transactions in progress'
+      });
+    }
+
+    // Check if OTP exists for this transaction
+    if (!transaction.otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'No OTP found for this transaction'
+      });
+    }
+
+    // Verify OTP
+    if (transaction.otp !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid OTP. Please try again.'
+      });
+    }
+
+    // OTP is correct, update status to completed
+    const updatedTransaction = await Transaction.findByIdAndUpdate(
+      transactionId,
+      { 
+        status: 'completed',
+        deliveryDate: new Date() // Set delivery date when OTP is verified
+      },
+      { new: true, runValidators: true }
+    )
+      .populate('doctorId', 'name email')
+      .populate('executiveId', 'name email')
+      .populate('locationId', 'name address');
+
+    res.json({
+      success: true,
+      message: 'OTP verified successfully. Transaction completed.',
+      data: { transaction: updatedTransaction }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateTransaction = async (req, res, next) => {
   try {
     const {
@@ -211,10 +269,6 @@ export const updateTransaction = async (req, res, next) => {
   }
 };
 
-/**
- * Delete transaction
- * @route DELETE /api/transactions/:id
- */
 export const deleteTransaction = async (req, res, next) => {
   try {
     const transaction = await Transaction.findByIdAndDelete(req.params.id);

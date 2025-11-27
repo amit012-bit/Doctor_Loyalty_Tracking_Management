@@ -6,39 +6,19 @@ import {
   getTransactionById,
   createTransaction,
   updateTransaction,
-  deleteTransaction
+  deleteTransaction,
+  verifyOTP
 } from '../controllers/transactionController.js';
+import Transaction from '../models/Transaction.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
 
 const router = express.Router();
 
-/**
- * @route   GET /api/transactions/statistics
- * @desc    Get transaction statistics
- * @access  Private
- */
+
 router.get('/statistics', authenticate, getTransactionStatistics);
-
-/**
- * @route   GET /api/transactions
- * @desc    Get all transactions with filters
- * @access  Private
- */
 router.get('/', authenticate, getTransactions);
-
-/**
- * @route   GET /api/transactions/:id
- * @desc    Get transaction by ID
- * @access  Private
- */
 router.get('/:id', authenticate, getTransactionById);
-
-/**
- * @route   POST /api/transactions
- * @desc    Create new transaction
- * @access  Private
- */
 router.post(
   '/',
   authenticate,
@@ -47,8 +27,18 @@ router.post(
       .notEmpty()
       .withMessage('Doctor ID is required'),
     body('executiveId')
-      .notEmpty()
-      .withMessage('Executive ID is required'),
+      .optional()
+      .custom((value, { req }) => {
+        // Executive is optional for pending status
+        if (req.body.status === 'pending' || !req.body.status) {
+          return true;
+        }
+        // For other statuses, executive is required
+        if (!value) {
+          throw new Error('Executive ID is required for non-pending transactions');
+        }
+        return true;
+      }),
     body('locationId')
       .notEmpty()
       .withMessage('Location ID is required'),
@@ -63,18 +53,12 @@ router.post(
       .withMessage('Month/Year must be in MM/YYYY format'),
     body('status')
       .optional()
-      .isIn(['started', 'IN progress', 'pending', 'completed'])
+      .isIn(['pending', 'in_progress', 'completed'])
       .withMessage('Invalid status')
   ],
   validate,
   createTransaction
 );
-
-/**
- * @route   PUT /api/transactions/:id
- * @desc    Update transaction
- * @access  Private
- */
 router.put(
   '/:id',
   authenticate,
@@ -93,18 +77,80 @@ router.put(
       .withMessage('Month/Year must be in MM/YYYY format'),
     body('status')
       .optional()
-      .isIn(['started', 'IN progress', 'pending', 'completed'])
+      .isIn(['pending', 'in_progress', 'completed'])
       .withMessage('Invalid status')
   ],
   validate,
   updateTransaction
 );
+router.patch(
+  '/:id/assign-executive',
+  authenticate,
+  [
+    body('executiveId')
+      .notEmpty()
+      .withMessage('Executive ID is required')
+  ],
+  validate,
+  async (req, res, next) => {
+    try {
+      // Get current transaction to check status
+      const currentTransaction = await Transaction.findById(req.params.id);
+      if (!currentTransaction) {
+        return res.status(404).json({
+          success: false,
+          message: 'Transaction not found'
+        });
+      }
 
-/**
- * @route   DELETE /api/transactions/:id
- * @desc    Delete transaction
- * @access  Private/Admin
- */
+      // Prepare update data
+      const updateData = {
+        executiveId: req.body.executiveId
+      };
+
+      // If transaction is pending, change status to in_progress and generate OTP
+      if (currentTransaction.status === 'pending') {
+        updateData.status = 'in_progress';
+        // Generate 6-digit OTP
+        updateData.otp = Math.floor(100000 + Math.random() * 900000).toString();
+      }
+
+      // Update transaction
+      const transaction = await Transaction.findByIdAndUpdate(
+        req.params.id,
+        updateData,
+        { new: true, runValidators: true }
+      )
+        .populate('doctorId', 'name email')
+        .populate('executiveId', 'name email')
+        .populate('locationId', 'name address');
+
+      res.json({
+        success: true,
+        message: 'Executive assigned successfully',
+        data: { transaction }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+router.patch(
+  '/:id/verify-otp',
+  authenticate,
+  [
+    body('otp')
+      .notEmpty()
+      .withMessage('OTP is required')
+      .isLength({ min: 6, max: 6 })
+      .withMessage('OTP must be 6 digits')
+      .matches(/^\d{6}$/)
+      .withMessage('OTP must contain only numbers')
+  ],
+  validate,
+  verifyOTP
+);
+
 router.delete('/:id', authenticate, authorize('admin', 'superadmin'), deleteTransaction);
 
 export default router;

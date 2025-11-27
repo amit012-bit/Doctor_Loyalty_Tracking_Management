@@ -1,9 +1,5 @@
 import Location from '../models/Location.js';
 
-/**
- * Get all locations
- * @route GET /api/locations
- */
 export const getLocations = async (req, res, next) => {
   try {
     const locations = await Location.find().sort({ name: 1 });
@@ -18,10 +14,6 @@ export const getLocations = async (req, res, next) => {
   }
 };
 
-/**
- * Get location by ID
- * @route GET /api/locations/:id
- */
 export const getLocationById = async (req, res, next) => {
   try {
     const location = await Location.findById(req.params.id);
@@ -42,10 +34,6 @@ export const getLocationById = async (req, res, next) => {
   }
 };
 
-/**
- * Create new location
- * @route POST /api/locations
- */
 export const createLocation = async (req, res, next) => {
   try {
     const { name, address } = req.body;
@@ -71,10 +59,6 @@ export const createLocation = async (req, res, next) => {
   }
 };
 
-/**
- * Update location
- * @route PUT /api/locations/:id
- */
 export const updateLocation = async (req, res, next) => {
   try {
     const { name, address } = req.body;
@@ -102,10 +86,6 @@ export const updateLocation = async (req, res, next) => {
   }
 };
 
-/**
- * Delete location
- * @route DELETE /api/locations/:id
- */
 export const deleteLocation = async (req, res, next) => {
   try {
     const location = await Location.findByIdAndDelete(req.params.id);

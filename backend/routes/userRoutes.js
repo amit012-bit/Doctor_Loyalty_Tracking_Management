@@ -14,11 +14,6 @@ import { validate } from '../middleware/validation.js';
 
 const router = express.Router();
 
-/**
- * @route   POST /api/users/register
- * @desc    Register a new user
- * @access  Public
- */
 router.post(
   '/register',
   [
@@ -40,12 +35,6 @@ router.post(
   validate,
   registerUser
 );
-
-/**
- * @route   POST /api/users/login
- * @desc    Login user
- * @access  Public
- */
 router.post(
   '/login',
   [
@@ -60,19 +49,7 @@ router.post(
   validate,
   loginUser
 );
-
-/**
- * @route   GET /api/users/me
- * @desc    Get current user profile
- * @access  Private
- */
 router.get('/me', authenticate, getCurrentUser);
-
-/**
- * @route   PUT /api/users/me
- * @desc    Update current user profile
- * @access  Private
- */
 router.put(
   '/me',
   authenticate,
@@ -95,26 +72,8 @@ router.put(
   validate,
   updateUser
 );
-
-/**
- * @route   DELETE /api/users/me
- * @desc    Delete current user account
- * @access  Private
- */
 router.delete('/me', authenticate, deleteUser);
-
-/**
- * @route   GET /api/users
- * @desc    Get all users
- * @access  Private/Admin
- */
-router.get('/', authenticate, authorize('admin'), getUsers);
-
-/**
- * @route   GET /api/users/:id
- * @desc    Get user by ID
- * @access  Private
- */
+router.get('/', authenticate, authorize('admin','doctor'), getUsers);
 router.get('/:id', authenticate, getUserById);
 
 export default router;

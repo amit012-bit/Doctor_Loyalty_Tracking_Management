@@ -1,11 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
-/**
- * Generate JWT token
- * @param {string} userId - User ID to encode in token
- * @returns {string} - JWT token
- */
 const generateToken = (userId) => {
   return jwt.sign(
     { userId },
@@ -14,10 +9,6 @@ const generateToken = (userId) => {
   );
 };
 
-/**
- * Register a new user
- * @route POST /api/users/register
- */
 export const registerUser = async (req, res, next) => {
   try {
     const { name, email, password, role, locationId } = req.body;
@@ -57,10 +48,6 @@ export const registerUser = async (req, res, next) => {
   }
 };
 
-/**
- * Login user
- * @route POST /api/users/login
- */
 export const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -117,10 +104,6 @@ export const loginUser = async (req, res, next) => {
   }
 };
 
-/**
- * Get current user profile
- * @route GET /api/users/me
- */
 export const getCurrentUser = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
@@ -135,10 +118,6 @@ export const getCurrentUser = async (req, res, next) => {
   }
 };
 
-/**
- * Get all users (admin only)
- * @route GET /api/users
- */
 export const getUsers = async (req, res, next) => {
   try {
     const users = await User.find().select('-password');
@@ -154,10 +133,6 @@ export const getUsers = async (req, res, next) => {
   }
 };
 
-/**
- * Get user by ID
- * @route GET /api/users/:id
- */
 export const getUserById = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id).select('-password');
@@ -179,10 +154,6 @@ export const getUserById = async (req, res, next) => {
   }
 };
 
-/**
- * Update user profile
- * @route PUT /api/users/me
- */
 export const updateUser = async (req, res, next) => {
   try {
     const { name, email, locationId } = req.body;
@@ -211,10 +182,6 @@ export const updateUser = async (req, res, next) => {
   }
 };
 
-/**
- * Delete user
- * @route DELETE /api/users/me
- */
 export const deleteUser = async (req, res, next) => {
   try {
     await User.findByIdAndDelete(req.user._id);
