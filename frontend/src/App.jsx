@@ -3,6 +3,8 @@ import Sidebar from './components/Sidebar'
 import TopNav from './components/TopNav'
 import LoyaltyRewardOverview from './components/LoyaltyRewardOverview'
 import Settings from './components/Settings'
+import Doctors from './components/Doctors'
+import Executives from './components/Executives'
 import './App.css'
 import Login from './components/Login'
 
@@ -47,6 +49,10 @@ function App() {
     switch (activeItem) {
       case 'loyalty':
         return <LoyaltyRewardOverview />
+      case 'doctors':
+        return <Doctors />
+      case 'executives':
+        return <Executives />
       case 'settings':
         return <Settings currentUser={user} />
       default:

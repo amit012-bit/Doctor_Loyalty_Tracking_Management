@@ -37,9 +37,9 @@ const seedData = async () => {
     ]);
     console.log(`✅ Created ${locations.length} locations`);
 
-    // Create users
+    // Create users - using create() instead of insertMany() to trigger password hashing
     console.log('👥 Creating users...');
-    const users = await User.insertMany([
+    const userData = [
       {
         name: 'Dr. Rajesh Kumar',
         email: 'doctor1@example.com',
@@ -103,7 +103,14 @@ const seedData = async () => {
         role: 'accountant',
         locationId: locations[0]._id
       }
-    ]);
+    ];
+    
+    // Create users one by one to ensure password hashing works
+    const users = [];
+    for (const userInfo of userData) {
+      const user = await User.create(userInfo);
+      users.push(user);
+    }
     console.log(`✅ Created ${users.length} users`);
 
     // Get doctors and executives

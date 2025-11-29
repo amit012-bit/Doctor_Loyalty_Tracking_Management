@@ -2,14 +2,17 @@
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
+  padding-bottom: 0;
+  padding-top: 0;
+  min-height: 0;
 }
 
 /* Header Greeting Banner */
 .greeting-banner {
   background: linear-gradient(135deg, var(--primary-teal) 0%, var(--primary-blue) 100%);
   border-radius: var(--radius-xl);
-  padding: 32px 40px;
-  margin-bottom: 32px;
+  padding: 16px 32px;
+  margin-bottom: 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -34,15 +37,15 @@
 }
 
 .greeting-title {
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 700;
   color: white;
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
   letter-spacing: -0.5px;
 }
 
 .greeting-subtitle {
-  font-size: 16px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.9);
   margin: 0;
 }
@@ -57,17 +60,17 @@
 .stats-cards-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 24px;
-  margin-bottom: 32px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .stat-card {
   background: var(--card-bg);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 16px 20px;
   display: flex;
   align-items: flex-start;
-  gap: 20px;
+  gap: 16px;
   box-shadow: var(--shadow-md);
   transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -78,8 +81,8 @@
 }
 
 .stat-icon-wrapper {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -93,23 +96,23 @@
 }
 
 .stat-title {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 700;
-  margin: 0 0 4px 0;
+  margin: 0 0 2px 0;
   letter-spacing: -0.5px;
 }
 
 .stat-description {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-light);
   margin: 0;
 }
@@ -118,7 +121,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
   gap: 16px;
 }
@@ -160,7 +163,7 @@
 }
 
 .card-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -171,9 +174,10 @@
 .appointment-card-full {
   background: var(--card-bg);
   border-radius: var(--radius-lg);
-  padding: 28px;
+  padding: 20px 24px 16px 24px;
   box-shadow: var(--shadow-md);
-  margin-top: 32px;
+  margin-top: 24px;
+  margin-bottom: 0;
 }
 
 .table-wrapper {
@@ -197,9 +201,9 @@
 }
 
 .loyalty-reward-table th {
-  padding: 16px 12px;
+  padding: 10px 12px;
   text-align: left;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -247,8 +251,8 @@
 }
 
 .loyalty-reward-table td {
-  padding: 16px 12px;
-  font-size: 14px;
+  padding: 10px 12px;
+  font-size: 13px;
   color: var(--text-primary);
   font-weight: 500;
 }
@@ -336,6 +340,7 @@
 .view-details-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 6px 12px;
   font-size: 13px;
@@ -347,6 +352,8 @@
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  min-width: 120px;
+  width: 120px;
 }
 
 .view-details-btn:hover {
@@ -362,6 +369,7 @@
 .verify-otp-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 6px 12px;
   font-size: 13px;
@@ -374,6 +382,8 @@
   transition: all 0.2s;
   white-space: nowrap;
   box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  min-width: 120px;
+  width: 120px;
 }
 
 .verify-otp-btn:hover {
@@ -624,8 +634,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 24px;
-  padding-top: 20px;
+  margin-top: 20px;
+  padding-top: 16px;
+  padding-bottom: 0;
   border-top: 1px solid var(--border-color);
   flex-wrap: wrap;
   gap: 16px;

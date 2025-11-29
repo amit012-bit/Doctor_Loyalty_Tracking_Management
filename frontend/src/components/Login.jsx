@@ -57,8 +57,8 @@ function Login({ onLogin }) {
         <div className="login-illustration">
           <div className="illustration-content">
             <div className="logo-section">
-              <div className="logo-icon-large">RT</div>
-              <h1 className="logo-text-large">RewardTrust</h1>
+              <div className="logo-icon-large">LRM</div>
+              <h1 className="logo-text-large">Loyalty Reward Management</h1>
             </div>
             <h2 className="welcome-title">Welcome Back!</h2>
             <p className="welcome-subtitle">

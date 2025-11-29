@@ -36,3 +36,15 @@ export const registerUser = async (userData) => {
 export const getUsers = async () => {
     return await api.get(ENDPOINT_URL.USERS);
 }
+
+export const createUser = async (userData) => {
+    return await api.post(ENDPOINT_URL.REGISTER, userData);
+}
+
+export const updateUserById = async (userId, userData) => {
+    return await api.put(`${ENDPOINT_URL.USERS}/${userId}`, userData);
+}
+
+export const getUserById = async (userId) => {
+    return await api.get(`${ENDPOINT_URL.USERS}/${userId}`);
+}

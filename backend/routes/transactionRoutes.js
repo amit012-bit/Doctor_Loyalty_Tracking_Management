@@ -22,6 +22,7 @@ router.get('/:id', authenticate, getTransactionById);
 router.post(
   '/',
   authenticate,
+  authorize('admin', 'superadmin', 'accountant'),
   [
     body('doctorId')
       .notEmpty()
@@ -62,6 +63,7 @@ router.post(
 router.put(
   '/:id',
   authenticate,
+  authorize('admin', 'superadmin', 'accountant'),
   [
     body('amount')
       .optional()

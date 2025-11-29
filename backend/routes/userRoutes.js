@@ -7,6 +7,7 @@ import {
   getUsers,
   getUserById,
   updateUser,
+  updateUserById,
   deleteUser
 } from '../controllers/userController.js';
 import { authenticate, authorize } from '../middleware/auth.js';
@@ -73,8 +74,35 @@ router.put(
   updateUser
 );
 router.delete('/me', authenticate, deleteUser);
-router.get('/', authenticate, authorize('admin','doctor'), getUsers);
+router.get('/', authenticate, authorize('admin', 'doctor', 'superadmin', 'accountant'), getUsers);
 router.get('/:id', authenticate, getUserById);
+router.put(
+  '/:id',
+  authenticate,
+  authorize('admin', 'superadmin'),
+  [
+    body('name')
+      .optional()
+      .trim()
+      .isLength({ min: 2, max: 50 })
+      .withMessage('Name must be between 2 and 50 characters'),
+    body('email')
+      .optional()
+      .isEmail()
+      .normalizeEmail()
+      .withMessage('Please provide a valid email'),
+    body('locationId')
+      .optional()
+      .notEmpty()
+      .withMessage('Location ID cannot be empty'),
+    body('role')
+      .optional()
+      .isIn(['admin', 'doctor', 'executive', 'superadmin', 'accountant'])
+      .withMessage('Invalid role')
+  ],
+  validate,
+  updateUserById
+);
 
 export default router;
 

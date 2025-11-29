@@ -120,7 +120,9 @@ export const getCurrentUser = async (req, res, next) => {
 
 export const getUsers = async (req, res, next) => {
   try {
-    const users = await User.find().select('-password');
+    const users = await User.find()
+      .select('-password')
+      .populate('locationId', 'name address');
 
     res.json({
       success: true,
@@ -135,7 +137,9 @@ export const getUsers = async (req, res, next) => {
 
 export const getUserById = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const user = await User.findById(req.params.id)
+      .select('-password')
+      .populate('locationId', 'name address');
 
     if (!user) {
       return res.status(404).json({
@@ -189,6 +193,49 @@ export const deleteUser = async (req, res, next) => {
     res.json({
       success: true,
       message: 'User deleted successfully'
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateUserById = async (req, res, next) => {
+  try {
+    const { name, email, locationId, role, password } = req.body;
+    const userId = req.params.id;
+
+    // Find user first to handle password update properly
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Build update object
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    if (locationId) updateData.locationId = locationId;
+    if (role) updateData.role = role;
+    // Only update password if provided
+    if (password && password.trim() !== '') {
+      updateData.password = password;
+    }
+
+    // Update user
+    Object.assign(user, updateData);
+    await user.save();
+
+    // Return user without password
+    const updatedUser = await User.findById(userId).select('-password');
+
+    res.json({
+      success: true,
+      message: 'User updated successfully',
+      data: { user: updatedUser }
     });
 
   } catch (error) {

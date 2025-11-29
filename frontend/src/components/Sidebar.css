@@ -1,8 +1,8 @@
 .sidebar {
-  width: 260px;
+  width: 220px;
   height: 100vh;
   background-color: var(--card-bg);
-  padding: 24px 0;
+  padding: 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -14,19 +14,40 @@
 }
 
 .sidebar-title {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 32px 0;
+  margin: 0;
   padding: 0 24px;
+  height: 70px;
   letter-spacing: -0.5px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+.sidebar-title-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--primary-teal) 0%, var(--primary-cyan) 100%);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 0 12px;
+  padding: 24px 12px 12px 12px;
 }
 
 .sidebar-item {

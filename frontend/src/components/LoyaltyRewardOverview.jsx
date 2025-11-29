@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import './LoyaltyRewardOverview.css'
 import { getTransactions, getTransactionStatistics, assignExecutive, verifyOTP } from '../services/Transaction'
 import { getLocations } from '../services/Location'
@@ -24,7 +24,7 @@ function LoyaltyRewardOverview() {
   const [otpValues, setOtpValues] = useState({})
   const [verifyingOtp, setVerifyingOtp] = useState(null)
   const [otpErrors, setOtpErrors] = useState({})
-  const itemsPerPage = 10
+  const itemsPerPage = 5
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user')
@@ -42,12 +42,26 @@ function LoyaltyRewardOverview() {
       setLoading(true)
       setError('')
 
-        const [transactionsRes, statsRes, locationsRes, usersRes] = await Promise.all([
+      // Get user role from user state
+      const currentUserRole = user?.role
+
+        // Only fetch users if user has permission to assign executives
+        const requests = [
           getTransactions({ status: statusFilter || undefined }),
           getTransactionStatistics(),
-          getLocations(),
-          getUsers()
-        ])
+          getLocations()
+        ]
+        
+        // Only fetch users if role allows assigning executives
+        if (['admin', 'superadmin', 'accountant'].includes(currentUserRole)) {
+          requests.push(getUsers())
+        }
+        
+        const results = await Promise.all(requests)
+        const transactionsRes = results[0]
+        const statsRes = results[1]
+        const locationsRes = results[2]
+        const usersRes = results[3]
 
       if (transactionsRes.data.success) {
         setTransactions(transactionsRes.data.data.transactions || [])
@@ -64,6 +78,8 @@ function LoyaltyRewardOverview() {
         if (usersRes?.data?.success) {
           const users = usersRes.data.data.users || []
           setExecutives(users.filter(u => u.role === 'executive'))
+        } else if (!['admin', 'superadmin', 'accountant'].includes(currentUserRole)) {
+          setExecutives([])
         }
     } catch (err) {
       console.error('Error fetching data:', err)
@@ -74,8 +90,11 @@ function LoyaltyRewardOverview() {
   }
 
   useEffect(() => {
-    fetchData()
-  }, [statusFilter])
+    if (user) {
+      fetchData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, user])
 
   const handleTransactionCreated = () => {
     fetchData()
@@ -296,6 +315,12 @@ function LoyaltyRewardOverview() {
 
   const userName = user?.name || 'User'
   const firstName = userName.split(' ')[0]
+  const userRole = user?.role
+  
+  // Role-based permissions
+  const canCreateTransaction = ['admin', 'superadmin', 'accountant'].includes(userRole)
+  const canAssignExecutive = ['admin', 'superadmin', 'accountant'].includes(userRole)
+  const isExecutive = userRole === 'executive'
 
   if (loading) {
     return (
@@ -341,25 +366,25 @@ function LoyaltyRewardOverview() {
           <div key={card.id} className="stat-card">
             <div className="stat-icon-wrapper" style={{ background: card.bgGradient }}>
               {card.id === 'delivered' && (
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="22" height="22" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M7 14L11 18L21 8" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   <circle cx="14" cy="14" r="10" stroke="white" strokeWidth="2"/>
                 </svg>
               )}
               {card.id === 'in-progress' && (
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="22" height="22" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <circle cx="14" cy="14" r="10" stroke="white" strokeWidth="2"/>
                   <path d="M14 7V14L18 18" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               )}
               {card.id === 'pending' && (
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="22" height="22" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M14 7V14L18 18" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                   <circle cx="14" cy="14" r="10" stroke="white" strokeWidth="2"/>
                 </svg>
               )}
               {card.id === 'cash-in-hand' && (
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="22" height="22" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M14 7C17.866 7 21 10.134 21 14C21 17.866 17.866 21 14 21M7 14C7 10.134 10.134 7 14 7" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                   <path d="M14 7L18 11L14 14L10 11L14 7Z" fill="white"/>
                   <path d="M14 21L18 17L14 14L10 17L14 21Z" fill="white"/>
@@ -380,13 +405,15 @@ function LoyaltyRewardOverview() {
         <div className="card-header">
           <h2 className="card-title">Loyalty Reward Management</h2>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <button 
-              className="create-transaction-btn"
-              onClick={() => setIsModalOpen(true)}
-            >
-              <Plus size={16} />
-              Create Transaction
-          </button>
+            {canCreateTransaction && (
+              <button 
+                className="create-transaction-btn"
+                onClick={() => setIsModalOpen(true)}
+              >
+                <Plus size={16} />
+                Create Transaction
+              </button>
+            )}
             <div className="search-container" style={{ position: 'relative' }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ 
                 position: 'absolute', 
@@ -415,25 +442,45 @@ function LoyaltyRewardOverview() {
                 }}
             />
           </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value)
-                setCurrentPage(1) // Reset to page 1 on filter change
-              }}
-              style={{
-                padding: '0.5rem 0.75rem',
-                border: '1px solid #E5E7EB',
-                borderRadius: '8px',
-                fontSize: '14px'
-              }}
-            >
-              <option value="">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="IN progress">In Progress</option>
-              <option value="started">Started</option>
-              <option value="completed">Completed</option>
-            </select>
+            {!isExecutive && (
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value)
+                  setCurrentPage(1) // Reset to page 1 on filter change
+                }}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            )}
+            {isExecutive && (
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value)
+                  setCurrentPage(1) // Reset to page 1 on filter change
+                }}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="">All Status</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            )}
           </div>
         </div>
         <div className="table-wrapper">
@@ -461,14 +508,13 @@ function LoyaltyRewardOverview() {
                 paginatedTransactions.map((transaction) => {
                   const isExpanded = expandedRows.has(transaction._id)
                   return (
-                  <>
-                    <tr 
-                      key={transaction._id}
-                      className={isExpanded ? 'active-row' : ''}
-                    >
+                    <React.Fragment key={transaction._id}>
+                      <tr 
+                        className={isExpanded ? 'active-row' : ''}
+                      >
                       <td>{transaction.doctorId?.name || 'N/A'}</td>
                       <td>
-                        {transaction.status === 'pending' && !transaction.executiveId ? (
+                        {canAssignExecutive && transaction.status === 'pending' && !transaction.executiveId ? (
                           <select
                             className="assign-executive-select"
                             value={selectedExecutive[transaction._id] || ''}
@@ -498,7 +544,7 @@ function LoyaltyRewardOverview() {
                       <td>{getStatusBadge(transaction.status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '))}</td>
                       <td>{formatDate(transaction.deliveryDate)}</td>
                       <td>
-                        {transaction.status === 'pending' && !transaction.executiveId ? (
+                        {canAssignExecutive && transaction.status === 'pending' && !transaction.executiveId ? (
                           <button
                             className="assign-executive-btn"
                             onClick={() => handleAssignExecutive(transaction._id)}
@@ -620,7 +666,7 @@ function LoyaltyRewardOverview() {
                         </td>
                       </tr>
                     )}
-                  </>
+                    </React.Fragment>
                   )
                 })
               )}
