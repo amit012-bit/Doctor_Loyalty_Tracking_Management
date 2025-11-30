@@ -156,7 +156,7 @@ function Executives() {
               </svg>
               <input
                 type="text"
-                placeholder="Search by name, email, or location..."
+                placeholder="Search by name,phone, or location..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value)
@@ -178,7 +178,7 @@ function Executives() {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Email</th>
+                {/* <th>Email</th> */}
                 <th>Phone Number</th>
                 <th>Location</th>
                 <th>Created At</th>
@@ -188,7 +188,7 @@ function Executives() {
             <tbody>
               {filteredExecutives.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 6 : 5} style={{ textAlign: 'center', padding: '2rem' }}>
+                  <td colSpan={isAdmin ? 5 : 4} style={{ textAlign: 'center', padding: '2rem' }}>
                     {loading ? 'Loading...' : 'No executives found'}
                   </td>
                 </tr>
@@ -196,7 +196,7 @@ function Executives() {
                 paginatedExecutives.map((executive) => (
                   <tr key={executive._id}>
                     <td>{executive.name || 'N/A'}</td>
-                    <td>{executive.email || 'N/A'}</td>
+                    {/* <td>{executive.email || 'N/A'}</td> */}
                     <td>{executive.phoneNumber || 'N/A'}</td>
                     <td>{executive.locationId?.name || executive.locationId?.address || 'N/A'}</td>
                     <td>

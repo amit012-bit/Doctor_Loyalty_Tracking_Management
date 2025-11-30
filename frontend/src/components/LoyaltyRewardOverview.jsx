@@ -489,6 +489,7 @@ function LoyaltyRewardOverview() {
               <tr>
                 <th>Doctor</th>
                 <th>Executive</th>
+                <th>Location</th>
                 <th>Amount</th>
                 <th>Payment Mode</th>
                 <th>Month/Year</th>
@@ -500,7 +501,7 @@ function LoyaltyRewardOverview() {
             <tbody className={expandedRows.size > 0 ? 'has-expanded-row' : ''}>
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}>
                     {loading ? 'Loading...' : 'No transactions found'}
                   </td>
                 </tr>
@@ -538,6 +539,7 @@ function LoyaltyRewardOverview() {
                           ) : 'N/A'
                         )}
                       </td>
+                      <td>{transaction.locationId?.name || transaction.locationId?.address || 'N/A'}</td>
                       <td>{formatCurrency(transaction.amount)}</td>
                       <td>{transaction.paymentMode}</td>
                       <td>{transaction.monthYear}</td>
@@ -716,6 +718,10 @@ function LoyaltyRewardOverview() {
                         ) : 'N/A'
                       )}
                     </span>
+                  </div>
+                  <div className="card-row">
+                    <span className="card-label">Location</span>
+                    <span className="card-value">{transaction.locationId?.name || transaction.locationId?.address || 'N/A'}</span>
                   </div>
                   <div className="card-row">
                     <span className="card-label">Amount</span>

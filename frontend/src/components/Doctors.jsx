@@ -156,7 +156,7 @@ function Doctors() {
               </svg>
               <input
                 type="text"
-                placeholder="Search by name, email, or location..."
+                placeholder="Search by name, phone, or location..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value)
@@ -178,7 +178,7 @@ function Doctors() {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Email</th>
+                {/* <th>Email</th> */}
                 <th>Phone Number</th>
                 <th>Location</th>
                 <th>Created At</th>
@@ -188,7 +188,7 @@ function Doctors() {
             <tbody>
               {filteredDoctors.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 6 : 5} style={{ textAlign: 'center', padding: '2rem' }}>
+                  <td colSpan={isAdmin ? 5 : 4} style={{ textAlign: 'center', padding: '2rem' }}>
                     {loading ? 'Loading...' : 'No doctors found'}
                   </td>
                 </tr>
@@ -196,7 +196,7 @@ function Doctors() {
                 paginatedDoctors.map((doctor) => (
                   <tr key={doctor._id}>
                     <td>{doctor.name || 'N/A'}</td>
-                    <td>{doctor.email || 'N/A'}</td>
+                    {/* <td>{doctor.email || 'N/A'}</td> */}
                     <td>{doctor.phoneNumber || 'N/A'}</td>
                     <td>{doctor.locationId?.name || doctor.locationId?.address || 'N/A'}</td>
                     <td>

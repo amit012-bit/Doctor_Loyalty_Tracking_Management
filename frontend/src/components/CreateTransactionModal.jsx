@@ -11,8 +11,10 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
   const [activeTab, setActiveTab] = useState('individual') // 'individual' or 'bulk'
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [doctors, setDoctors] = useState([])
-  const [executives, setExecutives] = useState([])
+  const [allDoctors, setAllDoctors] = useState([]) // Store all doctors
+  const [allExecutives, setAllExecutives] = useState([]) // Store all executives
+  const [filteredDoctors, setFilteredDoctors] = useState([]) // Filtered by location
+  const [filteredExecutives, setFilteredExecutives] = useState([]) // Filtered by location
   const [locations, setLocations] = useState([])
   const [formData, setFormData] = useState({
     doctorId: '',
@@ -39,8 +41,11 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
 
           if (usersRes.data.success) {
             const users = usersRes.data.data.users || []
-            setDoctors(users.filter(u => u.role === 'doctor'))
-            setExecutives(users.filter(u => u.role === 'executive'))
+            setAllDoctors(users.filter(u => u.role === 'doctor'))
+            setAllExecutives(users.filter(u => u.role === 'executive'))
+            // Initially, no filtering (empty filtered lists)
+            setFilteredDoctors([])
+            setFilteredExecutives([])
           }
 
           if (locationsRes.data.success) {
@@ -67,6 +72,8 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
         monthYear: '',
         date: ''
       })
+      setFilteredDoctors([])
+      setFilteredExecutives([])
       setError('')
       setActiveTab('individual')
       setUploadedFile(null)
@@ -85,12 +92,59 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
     }
   }, [isOpen])
 
+  // Filter doctors and executives based on selected location
+  useEffect(() => {
+    if (formData.locationId) {
+      const filteredDocs = allDoctors.filter(doctor => {
+        // Handle populated locationId (object with _id) or direct ObjectId (string)
+        if (!doctor.locationId) return false
+        const locationIdValue = typeof doctor.locationId === 'object' 
+          ? doctor.locationId._id?.toString() || doctor.locationId.toString()
+          : doctor.locationId.toString()
+        return locationIdValue === formData.locationId
+      })
+      
+      const filteredExecs = allExecutives.filter(executive => {
+        // Handle populated locationId (object with _id) or direct ObjectId (string)
+        if (!executive.locationId) return false
+        const locationIdValue = typeof executive.locationId === 'object' 
+          ? executive.locationId._id?.toString() || executive.locationId.toString()
+          : executive.locationId.toString()
+        return locationIdValue === formData.locationId
+      })
+      
+      setFilteredDoctors(filteredDocs)
+      setFilteredExecutives(filteredExecs)
+      
+      // Clear doctor and executive selections when location changes
+      setFormData(prev => ({
+        ...prev,
+        doctorId: '',
+        executiveId: ''
+      }))
+    } else {
+      setFilteredDoctors([])
+      setFilteredExecutives([])
+    }
+  }, [formData.locationId, allDoctors, allExecutives])
+
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    
+    // If location is being changed, clear doctor and executive selections
+    if (name === 'locationId') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        doctorId: '',
+        executiveId: ''
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }))
+    }
     if (error) setError('')
   }
 
@@ -100,6 +154,13 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
     setLoading(true)
 
     try {
+      // Validate required fields
+      if (!formData.doctorId || !formData.executiveId || !formData.locationId || !formData.amount || !formData.monthYear) {
+        setError('Please fill in all required fields')
+        setLoading(false)
+        return
+      }
+
       // Format monthYear to MM/YYYY if needed
       let monthYear = formData.monthYear
       if (!monthYear.match(/^\d{2}\/\d{4}$/)) {
@@ -110,13 +171,12 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
         }
       }
 
-      // Set status based on whether executive is assigned
-      // If executive is assigned -> in_progress, if not -> pending
-      const finalStatus = formData.executiveId ? 'in_progress' : 'pending'
+      // Executive is now mandatory, so status is always 'in_progress'
+      const finalStatus = 'in_progress'
 
       const transactionData = {
         doctorId: formData.doctorId,
-        executiveId: formData.executiveId || null,
+        executiveId: formData.executiveId,
         locationId: formData.locationId,
         amount: parseFloat(formData.amount),
         paymentMode: formData.paymentMode,
@@ -194,7 +254,7 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
   }
 
   const mapRowToTransaction = (row) => {
-    // Expected columns: Doctor Name, Executive Name (optional), Location Name, Amount, Payment Mode, Month/Year, Delivery Date (optional)
+    // Expected columns: Doctor Name, Executive Name (required), Location Name, Amount, Payment Mode, Month/Year, Delivery Date (optional)
     const doctorName = row['Doctor Name'] || row['Doctor'] || row['doctor'] || row['doctorName']
     const executiveName = row['Executive Name'] || row['Executive'] || row['executive'] || row['executiveName'] || ''
     const locationName = row['Location Name'] || row['Location'] || row['location'] || row['locationName']
@@ -203,23 +263,24 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
     const monthYear = row['Month/Year'] || row['MonthYear'] || row['monthYear'] || row['Month/Year']
     const deliveryDate = row['Delivery Date'] || row['DeliveryDate'] || row['deliveryDate'] || row['Delivery Date'] || ''
 
-    // Find doctor by name
-    const doctor = doctors.find(d => 
+    // Find doctor by name (search in all doctors, not filtered)
+    const doctor = allDoctors.find(d => 
       d.name.toLowerCase() === doctorName?.toLowerCase()?.trim()
     )
     if (!doctor) {
       throw new Error(`Doctor "${doctorName}" not found`)
     }
 
-    // Find executive by name (optional)
-    let executive = null
-    if (executiveName && executiveName.trim()) {
-      executive = executives.find(e => 
-        e.name.toLowerCase() === executiveName.toLowerCase().trim()
-      )
-      if (!executive) {
-        throw new Error(`Executive "${executiveName}" not found`)
-      }
+    // Find executive by name (required, search in all executives, not filtered)
+    if (!executiveName || !executiveName.trim()) {
+      throw new Error(`Executive Name is required`)
+    }
+    
+    const executive = allExecutives.find(e => 
+      e.name.toLowerCase() === executiveName.toLowerCase().trim()
+    )
+    if (!executive) {
+      throw new Error(`Executive "${executiveName}" not found`)
     }
 
     // Find location by name
@@ -245,7 +306,7 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
 
     return {
       doctorId: doctor._id,
-      executiveId: executive?._id || null,
+      executiveId: executive._id,
       locationId: location._id || location.id,
       amount: parseFloat(amount),
       paymentMode: paymentMode === 'Online Transfer' ? 'Online Transfer' : 'Cash',
@@ -401,53 +462,8 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
             )}
 
             <div className="form-grid">
-              <div className="form-group">
-                <label htmlFor="doctorId" className="form-label">
-                  Doctor *
-                </label>
-                <select
-                  id="doctorId"
-                  name="doctorId"
-                  value={formData.doctorId}
-                  onChange={handleChange}
-                  className="form-input"
-                  required
-                >
-                  <option value="">Select Doctor</option>
-                  {doctors.map((doctor) => (
-                    <option key={doctor._id} value={doctor._id}>
-                      {doctor.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="executiveId" className="form-label">
-                  Executive (Optional)
-                </label>
-                <select
-                  id="executiveId"
-                  name="executiveId"
-                  value={formData.executiveId}
-                  onChange={handleChange}
-                  className="form-input"
-                >
-                  <option value="">Select Executive (Optional)</option>
-                  {executives.map((executive) => (
-                    <option key={executive._id} value={executive._id}>
-                      {executive.name}
-                    </option>
-                  ))}
-                </select>
-                <small className="form-hint">
-                  {formData.executiveId 
-                    ? 'Transaction will be created with "In Progress" status' 
-                    : 'Leave empty to create with "Pending" status'}
-                </small>
-              </div>
-
-              <div className="form-group">
+              {/* Location dropdown at the top */}
+              <div className="form-group full-width">
                 <label htmlFor="locationId" className="form-label">
                   Location *
                 </label>
@@ -466,6 +482,69 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
                     </option>
                   ))}
                 </select>
+                <small className="form-hint">
+                  {formData.locationId 
+                    ? `Showing doctors and executives for selected location` 
+                    : 'Select a location to see available doctors and executives'}
+                </small>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="doctorId" className="form-label">
+                  Doctor *
+                </label>
+                <select
+                  id="doctorId"
+                  name="doctorId"
+                  value={formData.doctorId}
+                  onChange={handleChange}
+                  className="form-input"
+                  required
+                  disabled={!formData.locationId}
+                >
+                  <option value="">
+                    {formData.locationId ? 'Select Doctor' : 'Select Location First'}
+                  </option>
+                  {filteredDoctors.map((doctor) => (
+                    <option key={doctor._id} value={doctor._id}>
+                      {doctor.name}
+                    </option>
+                  ))}
+                </select>
+                {formData.locationId && filteredDoctors.length === 0 && (
+                  <small className="form-hint" style={{ color: '#DC2626' }}>
+                    No doctors found for this location
+                  </small>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="executiveId" className="form-label">
+                  Assign to Executive *
+                </label>
+                <select
+                  id="executiveId"
+                  name="executiveId"
+                  value={formData.executiveId}
+                  onChange={handleChange}
+                  className="form-input"
+                  required
+                  disabled={!formData.locationId}
+                >
+                  <option value="">
+                    {formData.locationId ? 'Select Executive' : 'Select Location First'}
+                  </option>
+                  {filteredExecutives.map((executive) => (
+                    <option key={executive._id} value={executive._id}>
+                      {executive.name}
+                    </option>
+                  ))}
+                </select>
+                {formData.locationId && filteredExecutives.length === 0 && (
+                  <small className="form-hint" style={{ color: '#DC2626' }}>
+                    No executives found for this location
+                  </small>
+                )}
               </div>
 
               <div className="form-group">
@@ -617,7 +696,7 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
                 <p>Your file should have the following columns(as it is mentioned below):</p>
                 <ul>
                   <li><strong>Doctor Name</strong> (required) - Must match an existing doctor name</li>
-                  <li><strong>Executive Name</strong> (optional) - Must match an existing executive name if provided</li>
+                  <li><strong>Executive Name</strong> (required) - Must match an existing executive name</li>
                   <li><strong>Location Name</strong> (required) - Must match an existing location name</li>
                   <li><strong>Amount</strong> (required) - Numeric value</li>
                   <li><strong>Payment Mode</strong> (optional) - "Cash" or "Online Transfer" (defaults to "Cash")</li>
