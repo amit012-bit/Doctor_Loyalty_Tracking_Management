@@ -1,4 +1,4 @@
-import { ENDPOINT_URL } from '../../urlConfig';
+import { ENDPOINT_URL, API_URL } from '../../urlConfig';
 import axios from 'axios';
 
 // Get token from localStorage for authenticated requests
@@ -8,7 +8,7 @@ const getAuthToken = () => {
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: API_URL,
 });
 
 // Add token to requests if available
