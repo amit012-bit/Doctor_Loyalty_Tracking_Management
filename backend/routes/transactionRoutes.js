@@ -5,6 +5,7 @@ import {
   getTransactionStatistics,
   getTransactionById,
   createTransaction,
+  createBulkTransactions,
   updateTransaction,
   deleteTransaction,
   verifyOTP
@@ -59,6 +60,32 @@ router.post(
   ],
   validate,
   createTransaction
+);
+router.post(
+  '/bulk',
+  authenticate,
+  [
+    body('transactions')
+      .isArray({ min: 1 })
+      .withMessage('Transactions must be a non-empty array'),
+    body('transactions.*.doctorId')
+      .notEmpty()
+      .withMessage('Doctor ID is required for all transactions'),
+    body('transactions.*.locationId')
+      .notEmpty()
+      .withMessage('Location ID is required for all transactions'),
+    body('transactions.*.amount')
+      .isFloat({ min: 0 })
+      .withMessage('Amount must be a positive number for all transactions'),
+    body('transactions.*.paymentMode')
+      .isIn(['Cash', 'Online Transfer'])
+      .withMessage('Payment mode must be either Cash or Online Transfer'),
+    body('transactions.*.monthYear')
+      .matches(/^(0[1-9]|1[0-2])\/\d{4}$/)
+      .withMessage('Month/Year must be in MM/YYYY format for all transactions')
+  ],
+  validate,
+  createBulkTransactions
 );
 router.put(
   '/:id',

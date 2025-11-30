@@ -42,6 +42,12 @@ export const createTransaction = async (transactionData) => {
   });
 };
 
+export const createBulkTransactions = async (transactions) => {
+  return await axios.post(`${ENDPOINT_URL.TRANSACTIONS}/bulk`, { transactions }, {
+    headers: getAuthHeaders()
+  });
+};
+
 export const assignExecutive = async (transactionId, executiveId) => {
   return await axios.patch(`${ENDPOINT_URL.TRANSACTIONS}/${transactionId}/assign-executive`, 
     { executiveId },

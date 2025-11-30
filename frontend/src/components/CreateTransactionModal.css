@@ -53,6 +53,38 @@
   border-bottom: 2px solid var(--border-color);
 }
 
+.modal-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--border-color);
+  padding: 0 32px;
+  gap: 0;
+}
+
+.modal-tab {
+  padding: 16px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  position: relative;
+  bottom: -2px;
+}
+
+.modal-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+.modal-tab.active {
+  color: var(--primary-teal);
+  border-bottom-color: var(--primary-teal);
+}
+
 .modal-title {
   font-size: 24px;
   font-weight: 700;
@@ -95,6 +127,12 @@
   color: #DC2626;
   font-size: 14px;
   font-weight: 500;
+}
+
+.form-success-message {
+  background-color: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #16A34A;
 }
 
 .form-grid {
@@ -209,6 +247,154 @@
   transform: none;
 }
 
+/* Bulk Upload Styles */
+.bulk-upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.file-upload-area {
+  position: relative;
+}
+
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.file-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  gap: 12px;
+}
+
+.file-upload-label:hover {
+  border-color: var(--primary-teal);
+  background: rgba(20, 184, 166, 0.05);
+}
+
+.file-upload-label svg {
+  color: var(--text-secondary);
+}
+
+.file-upload-label span {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.file-upload-label small {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.upload-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.upload-preview h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.preview-table-container {
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.preview-table thead {
+  background: var(--bg-primary);
+}
+
+.preview-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.preview-table td {
+  padding: 10px 12px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.preview-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.bulk-upload-info {
+  padding: 20px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.bulk-upload-info h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.bulk-upload-info p {
+  margin: 0 0 12px 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.bulk-upload-info ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.bulk-upload-info li {
+  margin-bottom: 8px;
+}
+
+.bulk-upload-info li strong {
+  color: var(--text-primary);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .modal-content {
@@ -229,6 +415,15 @@
     padding: 24px;
   }
 
+  .modal-tabs {
+    padding: 0 24px;
+  }
+
+  .modal-tab {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
   .modal-actions {
     flex-direction: column-reverse;
   }
@@ -237,6 +432,19 @@
   .btn-submit {
     width: 100%;
     justify-content: center;
+  }
+
+  .file-upload-label {
+    padding: 32px 16px;
+  }
+
+  .preview-table-container {
+    font-size: 12px;
+  }
+
+  .preview-table th,
+  .preview-table td {
+    padding: 8px;
   }
 }
 

@@ -13,7 +13,10 @@ export const getTransactions = async (req, res, next) => {
     if (userRole === 'executive') {
       // Executives can only see their own transactions with in_progress or completed status
       filter.executiveId = userId;
-      filter.status = { $in: ['in_progress', 'completed'] };
+      if(status) 
+        filter.status = status ;
+      else
+        filter.status = { $in: ['in_progress', 'completed'] };
     } else {
       // Admin, Superadmin, Accountant, Doctor can see all transactions
       if (status) filter.status = status;
@@ -525,6 +528,80 @@ export const deleteTransaction = async (req, res, next) => {
     res.json({
       success: true,
       message: 'Transaction deleted successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createBulkTransactions = async (req, res, next) => {
+  try {
+    const { transactions } = req.body;
+
+    if (!Array.isArray(transactions) || transactions.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide an array of transactions'
+      });
+    }
+
+    const createdTransactions = [];
+    const errors = [];
+
+    for (let i = 0; i < transactions.length; i++) {
+      const transactionData = transactions[i];
+      try {
+        const {
+          doctorId,
+          executiveId,
+          locationId,
+          amount,
+          paymentMode,
+          monthYear,
+          status,
+          deliveryDate
+        } = transactionData;
+
+        // Set status based on whether executive is assigned
+        const finalStatus = status || (executiveId ? 'in_progress' : 'pending');
+
+        // Generate OTP if status is in_progress
+        const otp = finalStatus === 'in_progress' ? generateOTP() : null;
+
+        const transaction = await Transaction.create({
+          doctorId,
+          executiveId: executiveId || null,
+          locationId,
+          amount: parseFloat(amount),
+          paymentMode,
+          monthYear,
+          status: finalStatus,
+          deliveryDate: deliveryDate || null,
+          otp: otp
+        });
+
+        const populatedTransaction = await Transaction.findById(transaction._id)
+          .populate('doctorId', 'name email')
+          .populate('executiveId', 'name email')
+          .populate('locationId', 'name address');
+
+        createdTransactions.push(populatedTransaction);
+      } catch (error) {
+        errors.push({
+          row: i + 1,
+          error: error.message || 'Failed to create transaction',
+          data: transactionData
+        });
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Successfully created ${createdTransactions.length} transaction(s)${errors.length > 0 ? `, ${errors.length} failed` : ''}`,
+      data: {
+        created: createdTransactions,
+        errors: errors.length > 0 ? errors : undefined
+      }
     });
   } catch (error) {
     next(error);
