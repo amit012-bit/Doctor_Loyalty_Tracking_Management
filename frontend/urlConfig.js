@@ -1,5 +1,6 @@
 // Backend URL - update this to your deployed backend URL
-export const BASE_URL = process.env.VITE_API_BASE_URL || 'https://doctor-loyalty-tracking-management.onrender.com';
+// export const BASE_URL = process.env.VITE_API_BASE_URL || 'https://doctor-loyalty-tracking-management.onrender.com';
+export const BASE_URL = 'http://localhost:5000';
 export const API_URL = `${BASE_URL}/api`;
 
 export const ENDPOINT_URL = {

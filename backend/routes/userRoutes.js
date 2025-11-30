@@ -29,6 +29,11 @@ router.post(
     body('password')
       .isLength({ min: 6 })
       .withMessage('Password must be at least 6 characters long'),
+    body('phoneNumber')
+      .notEmpty()
+      .withMessage('Phone number is required')
+      .matches(/^\+91[\s-]?[6-9]\d{9}$/)
+      .withMessage('Please provide a valid phone number (e.g., +91 9876543210 or +919876543210)'),
     body('locationId')
       .notEmpty()
       .withMessage('Location ID is required')
@@ -65,6 +70,10 @@ router.put(
       .isEmail()
       .normalizeEmail()
       .withMessage('Please provide a valid email'),
+    body('phoneNumber')
+      .optional()
+      .matches(/^\+91[\s-]?[6-9]\d{9}$/)
+      .withMessage('Please provide a valid phone number (e.g., +91 9876543210 or +919876543210)'),
     body('locationId')
       .optional()
       .notEmpty()
@@ -91,6 +100,10 @@ router.put(
       .isEmail()
       .normalizeEmail()
       .withMessage('Please provide a valid email'),
+    body('phoneNumber')
+      .optional()
+      .matches(/^\+91[\s-]?[6-9]\d{9}$/)
+      .withMessage('Please provide a valid phone number (e.g., +91 9876543210 or +919876543210)'),
     body('locationId')
       .optional()
       .notEmpty()

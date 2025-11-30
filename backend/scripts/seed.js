@@ -43,6 +43,7 @@ const seedData = async () => {
       {
         name: 'Dr. Rajesh Kumar',
         email: 'doctor1@example.com',
+        phoneNumber: '+91 9876543210',
         password: 'doctor123',
         role: 'doctor',
         locationId: locations[0]._id
@@ -50,6 +51,7 @@ const seedData = async () => {
       {
         name: 'Dr. Priya Sharma',
         email: 'doctor2@example.com',
+        phoneNumber: '+91 9876543211',
         password: 'doctor123',
         role: 'doctor',
         locationId: locations[1]._id
@@ -57,6 +59,7 @@ const seedData = async () => {
       {
         name: 'Dr. Amit Patel',
         email: 'doctor3@example.com',
+        phoneNumber: '+91 9876543212',
         password: 'doctor123',
         role: 'doctor',
         locationId: locations[2]._id
@@ -64,6 +67,7 @@ const seedData = async () => {
       {
         name: 'Executive John',
         email: 'executive1@example.com',
+        phoneNumber: '+91 9876543213',
         password: 'executive123',
         role: 'executive',
         locationId: locations[0]._id
@@ -71,6 +75,7 @@ const seedData = async () => {
       {
         name: 'Executive Sarah',
         email: 'executive2@example.com',
+        phoneNumber: '+91 9876543214',
         password: 'executive123',
         role: 'executive',
         locationId: locations[1]._id
@@ -78,6 +83,7 @@ const seedData = async () => {
       {
         name: 'Executive Mike',
         email: 'executive3@example.com',
+        phoneNumber: '+91 9876543215',
         password: 'executive123',
         role: 'executive',
         locationId: locations[2]._id
@@ -85,6 +91,7 @@ const seedData = async () => {
       {
         name: 'Admin User',
         email: 'admin@example.com',
+        phoneNumber: '+91 9876543216',
         password: 'admin123',
         role: 'admin',
         locationId: locations[0]._id
@@ -92,6 +99,7 @@ const seedData = async () => {
       {
         name: 'Super Admin',
         email: 'superadmin@example.com',
+        phoneNumber: '+91 9876543217',
         password: 'superadmin123',
         role: 'superadmin',
         locationId: locations[0]._id
@@ -99,6 +107,7 @@ const seedData = async () => {
       {
         name: 'Accountant User',
         email: 'accountant@example.com',
+        phoneNumber: '+91 9876543218',
         password: 'accountant123',
         role: 'accountant',
         locationId: locations[0]._id

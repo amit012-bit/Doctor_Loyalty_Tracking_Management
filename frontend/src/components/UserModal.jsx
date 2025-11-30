@@ -11,6 +11,7 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phoneNumber: '', // This will store only the 10 digits (without +91)
     password: '',
     role: defaultRole || 'doctor',
     locationId: ''
@@ -47,9 +48,12 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
           const response = await getUserById(userId)
           if (response.data.success) {
             const user = response.data.data.user
+            // Extract 10 digits from phone number (remove +91- prefix for display)
+            const phoneDisplay = user.phoneNumber ? user.phoneNumber.replace(/^\+91-?/, '').substring(0, 10) : ''
             setFormData({
               name: user.name || '',
               email: user.email || '',
+              phoneNumber: phoneDisplay,
               password: '', // Don't pre-fill password
               role: user.role || defaultRole || 'doctor',
               locationId: user.locationId?._id || user.locationId || ''
@@ -66,6 +70,7 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
       setFormData({
         name: '',
         email: '',
+        phoneNumber: '',
         password: '',
         role: defaultRole || 'doctor',
         locationId: ''
@@ -79,6 +84,7 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
       setFormData({
         name: '',
         email: '',
+        phoneNumber: '',
         password: '',
         role: defaultRole || 'doctor',
         locationId: ''
@@ -90,10 +96,22 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    
+    // Special handling for phone number - only allow 10 digits
+    if (name === 'phoneNumber') {
+      // Remove all non-digit characters and limit to 10 digits
+      const digitsOnly = value.replace(/\D/g, '').substring(0, 10)
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: digitsOnly
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }))
+    }
     if (error) setError('')
   }
 
@@ -104,8 +122,23 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
 
     try {
       // Validate required fields
-      if (!formData.name || !formData.email || !formData.locationId) {
+      if (!formData.name || !formData.email || !formData.phoneNumber || !formData.locationId) {
         setError('Please fill in all required fields')
+        setLoading(false)
+        return
+      }
+      
+      // Validate phone number: ensure we have 10 digits (with or without +91 prefix)
+      const phoneDigits = formData.phoneNumber.replace(/\D/g, '')
+      if (phoneDigits.length !== 10) {
+        setError('Please enter exactly 10 digits for the phone number')
+        setLoading(false)
+        return
+      }
+      
+      // Check if first digit is 6-9 (valid Indian mobile number)
+      if (!/^[6-9]/.test(phoneDigits)) {
+        setError('Phone number must start with 6, 7, 8, or 9')
         setLoading(false)
         return
       }
@@ -124,12 +157,16 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
         return
       }
 
+      // Format phone number as +91XXXXXXXXXX (backend will normalize to +91-XXXXXXXXXX)
+      const phoneNumber = `+91${formData.phoneNumber}`
+
       let response
       if (isEditMode) {
         // Update existing user (don't send password if empty)
         const updateData = {
           name: formData.name,
           email: formData.email,
+          phoneNumber: phoneNumber,
           role: formData.role,
           locationId: formData.locationId
         }
@@ -140,7 +177,11 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
         response = await updateUserById(userId, updateData)
       } else {
         // Create new user
-        response = await createUser(formData)
+        const createData = {
+          ...formData,
+          phoneNumber: phoneNumber
+        }
+        response = await createUser(createData)
       }
 
       if (response.data.success) {
@@ -204,6 +245,40 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
                 required
                 placeholder="Enter email address"
               />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="phoneNumber" className="form-label">
+                Phone Number *
+              </label>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <span style={{ 
+                  position: 'absolute', 
+                  left: '12px', 
+                  color: '#6B7280',
+                  fontWeight: '500',
+                  zIndex: 1,
+                  pointerEvents: 'none'
+                }}>
+                  +91
+                </span>
+                <input
+                  type="tel"
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  className="form-input"
+                  required
+                  placeholder="9876543210"
+                  maxLength={10}
+                  pattern="[6-9][0-9]{9}"
+                  style={{ paddingLeft: '48px' }}
+                />
+              </div>
+              <small className="form-hint" style={{ marginTop: '4px', display: 'block', color: '#6B7280', fontSize: '12px' }}>
+                Format: +91 followed by 10 digits (e.g., +91 9876543210)
+              </small>
             </div>
 
             <div className="form-group">

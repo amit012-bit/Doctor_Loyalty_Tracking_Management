@@ -11,7 +11,7 @@ const generateToken = (userId) => {
 
 export const registerUser = async (req, res, next) => {
   try {
-    const { name, email, password, role, locationId } = req.body;
+    const { name, email, password, role, locationId, phoneNumber } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -28,7 +28,8 @@ export const registerUser = async (req, res, next) => {
       email,
       password,
       role: role || 'user',
-      locationId
+      locationId,
+      phoneNumber
     });
 
     // Generate token
@@ -160,7 +161,7 @@ export const getUserById = async (req, res, next) => {
 
 export const updateUser = async (req, res, next) => {
   try {
-    const { name, email, locationId } = req.body;
+    const { name, email, locationId, phoneNumber } = req.body;
     const userId = req.user._id;
 
     // Build update object
@@ -168,6 +169,7 @@ export const updateUser = async (req, res, next) => {
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (locationId) updateData.locationId = locationId;
+    if (phoneNumber) updateData.phoneNumber = phoneNumber;
 
     const user = await User.findByIdAndUpdate(
       userId,
@@ -202,7 +204,7 @@ export const deleteUser = async (req, res, next) => {
 
 export const updateUserById = async (req, res, next) => {
   try {
-    const { name, email, locationId, role, password } = req.body;
+    const { name, email, locationId, role, password, phoneNumber } = req.body;
     const userId = req.params.id;
 
     // Find user first to handle password update properly
@@ -220,6 +222,7 @@ export const updateUserById = async (req, res, next) => {
     if (email) updateData.email = email;
     if (locationId) updateData.locationId = locationId;
     if (role) updateData.role = role;
+    if (phoneNumber) updateData.phoneNumber = phoneNumber;
     // Only update password if provided
     if (password && password.trim() !== '') {
       updateData.password = password;
