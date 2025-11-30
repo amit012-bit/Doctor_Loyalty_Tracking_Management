@@ -166,103 +166,113 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-form">
+        <form onSubmit={handleSubmit} className="transaction-form">
           {error && (
-            <div className="modal-error" style={{ 
-              padding: '0.75rem', 
-              marginBottom: '1rem', 
-              backgroundColor: '#FEE2E2', 
-              color: '#991B1B', 
-              borderRadius: '8px',
-              fontSize: '14px'
-            }}>
+            <div className="form-error-message">
               {error}
             </div>
           )}
 
-          <div className="form-group">
-            <label htmlFor="name">Name *</label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              placeholder="Enter full name"
-            />
-          </div>
+          <div className="form-grid">
+            <div className="form-group">
+              <label htmlFor="name" className="form-label">
+                Name *
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className="form-input"
+                required
+                placeholder="Enter full name"
+              />
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="email">Email *</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              placeholder="Enter email address"
-            />
-          </div>
+            <div className="form-group">
+              <label htmlFor="email" className="form-label">
+                Email *
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="form-input"
+                required
+                placeholder="Enter email address"
+              />
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="password">
-              Password {!isEditMode && '*'}
-              {isEditMode && <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 'normal' }}>(leave blank to keep current)</span>}
-            </label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required={!isEditMode}
-              minLength={isEditMode ? 0 : 6}
-              placeholder={isEditMode ? "Enter new password (optional)" : "Enter password (min 6 characters)"}
-            />
-          </div>
+            <div className="form-group">
+              <label htmlFor="password" className="form-label">
+                Password {!isEditMode && '*'}
+              </label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="form-input"
+                required={!isEditMode}
+                minLength={isEditMode ? 0 : 6}
+                placeholder={isEditMode ? "Enter new password (optional)" : "Enter password (min 6 characters)"}
+              />
+              {isEditMode && (
+                <small className="form-hint">(leave blank to keep current)</small>
+              )}
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="role">Role *</label>
-            <select
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              required
-            >
-              <option value="doctor">Doctor</option>
-              <option value="executive">Executive</option>
-              <option value="admin">Admin</option>
-              <option value="superadmin">Super Admin</option>
-              <option value="accountant">Accountant</option>
-            </select>
-          </div>
+            <div className="form-group">
+              <label htmlFor="role" className="form-label">
+                Role *
+              </label>
+              <select
+                id="role"
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                className="form-input"
+                required
+              >
+                <option value="doctor">Doctor</option>
+                <option value="executive">Executive</option>
+                <option value="admin">Admin</option>
+                <option value="superadmin">Super Admin</option>
+                <option value="accountant">Accountant</option>
+              </select>
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="locationId">Location *</label>
-            <select
-              id="locationId"
-              name="locationId"
-              value={formData.locationId}
-              onChange={handleChange}
-              required
-            >
-              <option value="">Select Location</option>
-              {locations.map((location) => (
-                <option key={location._id} value={location._id}>
-                  {location.name} - {location.address}
-                </option>
-              ))}
-            </select>
+            <div className="form-group full-width">
+              <label htmlFor="locationId" className="form-label">
+                Location *
+              </label>
+              <select
+                id="locationId"
+                name="locationId"
+                value={formData.locationId}
+                onChange={handleChange}
+                className="form-input"
+                required
+              >
+                <option value="">Select Location</option>
+                {locations.map((location) => (
+                  <option key={location._id} value={location._id}>
+                    {location.name} - {location.address}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="modal-cancel-btn" onClick={onClose} disabled={loading}>
+            <button type="button" className="btn-cancel" onClick={onClose} disabled={loading}>
               Cancel
             </button>
-            <button type="submit" className="modal-submit-btn" disabled={loading}>
+            <button type="submit" className="btn-submit" disabled={loading}>
               {loading ? 'Saving...' : (isEditMode ? 'Update User' : 'Create User')}
             </button>
           </div>

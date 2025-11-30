@@ -674,6 +674,193 @@ function LoyaltyRewardOverview() {
           </table>
         </div>
 
+        {/* Mobile Card View */}
+        <div className="mobile-cards-container">
+          {filteredTransactions.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+              {loading ? 'Loading...' : 'No transactions found'}
+            </div>
+          ) : (
+            paginatedTransactions.map((transaction) => {
+              const isExpanded = expandedRows.has(transaction._id)
+              return (
+                <div key={transaction._id} className={`transaction-card ${isExpanded ? 'active' : ''}`}>
+                  <div className="card-row">
+                    <span className="card-label">Doctor</span>
+                    <span className="card-value">{transaction.doctorId?.name || 'N/A'}</span>
+                  </div>
+                  <div className="card-row">
+                    <span className="card-label">Executive</span>
+                    <span className="card-value">
+                      {canAssignExecutive && transaction.status === 'pending' && !transaction.executiveId ? (
+                        <select
+                          className="assign-executive-select"
+                          value={selectedExecutive[transaction._id] || ''}
+                          onChange={(e) => setSelectedExecutive(prev => ({
+                            ...prev,
+                            [transaction._id]: e.target.value
+                          }))}
+                          disabled={assigningExecutive === transaction._id}
+                          style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #E5E7EB', fontSize: '14px' }}
+                        >
+                          <option value="">Select Executive</option>
+                          {executives.map((exec) => (
+                            <option key={exec._id} value={exec._id}>
+                              {exec.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : transaction.executiveId?.name || (
+                        transaction.status === 'pending' ? (
+                          <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Not assigned</span>
+                        ) : 'N/A'
+                      )}
+                    </span>
+                  </div>
+                  <div className="card-row">
+                    <span className="card-label">Amount</span>
+                    <span className="card-value">{formatCurrency(transaction.amount)}</span>
+                  </div>
+                  <div className="card-row">
+                    <span className="card-label">Payment Mode</span>
+                    <span className="card-value">{transaction.paymentMode}</span>
+                  </div>
+                  <div className="card-row">
+                    <span className="card-label">Month/Year</span>
+                    <span className="card-value">{transaction.monthYear}</span>
+                  </div>
+                  <div className="card-row">
+                    <span className="card-label">Status</span>
+                    <span className="card-value">{getStatusBadge(transaction.status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '))}</span>
+                  </div>
+                  <div className="card-row">
+                    <span className="card-label">Delivery Date</span>
+                    <span className="card-value">{formatDate(transaction.deliveryDate)}</span>
+                  </div>
+                  <div className="card-actions">
+                    {canAssignExecutive && transaction.status === 'pending' && !transaction.executiveId ? (
+                      <button
+                        className="assign-executive-btn"
+                        onClick={() => handleAssignExecutive(transaction._id)}
+                        disabled={!selectedExecutive[transaction._id] || assigningExecutive === transaction._id}
+                      >
+                        <UserPlus size={14} />
+                        {assigningExecutive === transaction._id ? 'Assigning...' : 'Assign'}
+                      </button>
+                    ) : transaction.status !== 'pending' ? (
+                      <button
+                        className={isInProgress(transaction.status) ? "verify-otp-btn" : "view-details-btn"}
+                        onClick={() => toggleRowExpansion(transaction._id)}
+                      >
+                        {isInProgress(transaction.status) ? (
+                          <>
+                            <Shield size={14} />
+                            <span>{expandedRows.has(transaction._id) ? 'Hide' : 'Verify OTP'}</span>
+                            {expandedRows.has(transaction._id) && <ChevronUp size={14} />}
+                          </>
+                        ) : (
+                          <>
+                            <Eye size={14} />
+                            {expandedRows.has(transaction._id) ? (
+                              <>
+                                <span>Hide Details</span>
+                                <ChevronUp size={14} />
+                              </>
+                            ) : (
+                              <>
+                                <span>View Details</span>
+                                <ChevronDown size={14} />
+                              </>
+                            )}
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <span style={{ color: '#9CA3AF', textAlign: 'center', display: 'block' }}>-</span>
+                    )}
+                  </div>
+                  {expandedRows.has(transaction._id) && transaction.status !== 'pending' && (
+                    <div className="transaction-details">
+                      {isInProgress(transaction.status) ? (
+                        <div className="otp-verification-section">
+                          <div className="otp-header">
+                            <Shield size={20} />
+                            <h3>Verify OTP</h3>
+                            <p className="otp-hint">Enter the 6-digit OTP sent to the doctor</p>
+                          </div>
+                          {otpErrors[transaction._id] && (
+                            <div className="otp-error-message">
+                              {otpErrors[transaction._id]}
+                            </div>
+                          )}
+                          <div className="otp-input-container">
+                            <input
+                              type="text"
+                              className={`otp-input ${otpErrors[transaction._id] ? 'otp-input-error' : ''}`}
+                              placeholder="Enter 6-digit OTP"
+                              maxLength={6}
+                              value={otpValues[transaction._id] || ''}
+                              onChange={(e) => {
+                                const value = e.target.value.replace(/\D/g, '') // Only numbers
+                                setOtpValues(prev => ({
+                                  ...prev,
+                                  [transaction._id]: value
+                                }))
+                                // Clear error when user starts typing
+                                if (otpErrors[transaction._id]) {
+                                  setOtpErrors(prev => {
+                                    const newState = { ...prev }
+                                    delete newState[transaction._id]
+                                    return newState
+                                  })
+                                }
+                              }}
+                              disabled={verifyingOtp === transaction._id}
+                            />
+                            <button
+                              className="verify-otp-submit-btn"
+                              onClick={() => handleVerifyOtp(transaction._id)}
+                              disabled={!otpValues[transaction._id] || otpValues[transaction._id].length !== 6 || verifyingOtp === transaction._id}
+                            >
+                              {verifyingOtp === transaction._id ? 'Verifying...' : 'Verify OTP'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="details-grid">
+                          <div className="detail-item">
+                            <span className="detail-label">Transaction Initiated On:</span>
+                            <span className="detail-value">
+                              {formatDateTime(transaction.createdAt)}
+                            </span>
+                          </div>
+                          <div className="detail-item">
+                            <span className="detail-label">Cash Delivered On:</span>
+                            <span className="detail-value">
+                              {formatDateTime(transaction.deliveryDate)}
+                            </span>
+                          </div>
+                          
+                          {getStatusNotification(transaction.status) && (
+                            <div className={`status-notification ${getStatusNotification(transaction.status).type}`}>
+                              <span className="notification-icon">
+                                {getStatusNotification(transaction.status).icon}
+                              </span>
+                              <span className="notification-message">
+                                {getStatusNotification(transaction.status).message}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          )}
+        </div>
+
         {/* Pagination Controls */}
         {filteredTransactions.length > 0 && totalPages > 1 && (
           <div className="pagination-container">

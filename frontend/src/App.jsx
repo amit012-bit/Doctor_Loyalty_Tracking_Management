@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
 import TopNav from './components/TopNav'
 import LoyaltyRewardOverview from './components/LoyaltyRewardOverview'
-import Settings from './components/Settings'
+import MyProfile from './components/MyProfile'
 import Doctors from './components/Doctors'
 import Executives from './components/Executives'
 import './App.css'
@@ -12,6 +12,7 @@ function App() {
   const [activeItem, setActiveItem] = useState('loyalty')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState(null)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   // Check if user is logged in on mount
   useEffect(() => {
@@ -43,6 +44,14 @@ function App() {
 
   const handleItemClick = (itemId) => {
     setActiveItem(itemId)
+    // Close sidebar on mobile when item is clicked
+    if (window.innerWidth <= 768) {
+      setIsSidebarOpen(false)
+    }
+  }
+
+  const handleMenuToggle = () => {
+    setIsSidebarOpen(!isSidebarOpen)
   }
 
   const renderContent = () => {
@@ -53,8 +62,8 @@ function App() {
         return <Doctors />
       case 'executives':
         return <Executives />
-      case 'settings':
-        return <Settings currentUser={user} />
+      case 'profile':
+        return <MyProfile currentUser={user} />
       default:
         return (
           <div className="content-placeholder">
@@ -78,8 +87,15 @@ function App() {
         onItemClick={handleItemClick}
         userRole={user?.role}
         onLogout={handleLogout}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
-      <TopNav user={user} />
+      {isSidebarOpen && <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)} />}
+      <TopNav 
+        user={user} 
+        onMenuClick={handleMenuToggle}
+        isSidebarOpen={isSidebarOpen}
+      />
       <main className="main-content">
         {renderContent()}
       </main>

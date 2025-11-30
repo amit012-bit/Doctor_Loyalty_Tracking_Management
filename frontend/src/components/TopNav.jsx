@@ -1,12 +1,16 @@
 import './TopNav.css'
+import { Menu, X } from 'lucide-react'
 
-function TopNav({ user }) {
+function TopNav({ user, onMenuClick, isSidebarOpen }) {
   const userName = user?.name || 'User'
   const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
   return (
     <nav className="top-nav">
       <div className="top-nav-left">
+        <button className="mobile-menu-btn" onClick={onMenuClick} aria-label="Toggle menu">
+          {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
         <div className="logo-section">
           <div className="logo-icon">LRM</div>
           <span className="logo-text">Loyalty Reward Management</span>

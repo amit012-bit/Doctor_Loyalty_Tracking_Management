@@ -48,3 +48,7 @@ export const updateUserById = async (userId, userData) => {
 export const getUserById = async (userId) => {
     return await api.get(`${ENDPOINT_URL.USERS}/${userId}`);
 }
+
+export const updateCurrentUser = async (userData) => {
+    return await api.put(`${ENDPOINT_URL.USERS}/me`, userData);
+}
