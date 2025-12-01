@@ -56,6 +56,43 @@
   color: white;
 }
 
+/* Location Tabs */
+.location-tabs-container {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0;
+}
+
+.location-tab {
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  position: relative;
+  bottom: -2px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.location-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+.location-tab.active {
+  color: var(--primary-teal);
+  border-bottom-color: var(--primary-teal);
+  background: var(--card-bg);
+}
+
 /* Stats Cards Row */
 .stats-cards-row {
   display: grid;

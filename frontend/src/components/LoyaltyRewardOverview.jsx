@@ -16,6 +16,7 @@ function LoyaltyRewardOverview() {
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [selectedLocationId, setSelectedLocationId] = useState(null) // null = "All", locationId = specific location
   const [currentPage, setCurrentPage] = useState(1)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [assigningExecutive, setAssigningExecutive] = useState(null)
@@ -46,8 +47,12 @@ function LoyaltyRewardOverview() {
       const currentUserRole = user?.role
 
         // Only fetch users if user has permission to assign executives
+        const transactionFilters = {}
+        if (statusFilter) transactionFilters.status = statusFilter
+        if (selectedLocationId) transactionFilters.locationId = selectedLocationId
+        
         const requests = [
-          getTransactions({ status: statusFilter || undefined }),
+          getTransactions(Object.keys(transactionFilters).length > 0 ? transactionFilters : {}),
           getTransactionStatistics(),
           getLocations()
         ]
@@ -92,9 +97,10 @@ function LoyaltyRewardOverview() {
   useEffect(() => {
     if (user) {
       fetchData()
+      setCurrentPage(1) // Reset to page 1 when filters change
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, user])
+  }, [statusFilter, selectedLocationId, user])
 
   const handleTransactionCreated = () => {
     fetchData()
@@ -278,11 +284,57 @@ function LoyaltyRewardOverview() {
     setCurrentPage(1)
   }, [searchQuery, statusFilter])
 
-  const statsCards = statistics ? [
+  // Calculate statistics from transactions array
+  // Note: transactions array is already filtered by selectedLocationId when fetched from backend
+  const calculateStatisticsFromTransactions = () => {
+    if (!transactions || transactions.length === 0) {
+      return {
+        delivered: { count: 0, amount: 0 },
+        inProgress: { count: 0, amount: 0 },
+        pending: { count: 0, amount: 0 },
+        cashInHand: 0
+      }
+    }
+
+    // Calculate statistics from the transactions array
+    // The transactions array is already filtered by location from backend when selectedLocationId is set
+    const stats = {
+      delivered: { count: 0, amount: 0 },
+      inProgress: { count: 0, amount: 0 },
+      pending: { count: 0, amount: 0 },
+      cashInHand: 0
+    }
+
+    transactions.forEach(transaction => {
+      const status = transaction.status
+      const amount = transaction.amount || 0
+
+      if (status === 'completed') {
+        stats.delivered.count++
+        stats.delivered.amount += amount
+      } else if (status === 'in_progress') {
+        stats.inProgress.count++
+        stats.inProgress.amount += amount
+        // Cash in hand includes in_progress cash transactions
+        if (transaction.paymentMode === 'Cash') {
+          stats.cashInHand += amount
+        }
+      } else if (status === 'pending') {
+        stats.pending.count++
+        stats.pending.amount += amount
+      }
+    })
+
+    return stats
+  }
+
+  const locationFilteredStatistics = calculateStatisticsFromTransactions()
+
+  const statsCards = [
     {
       id: 'delivered',
       title: 'Delivered',
-      value: statistics.delivered?.count?.toString() || '0',
+      value: locationFilteredStatistics.delivered.count.toString(),
       description: 'Successfully completed',
       color: '#14B8A6',
       bgGradient: 'linear-gradient(135deg, #14B8A6 0%, #06B6D4 100%)'
@@ -290,28 +342,28 @@ function LoyaltyRewardOverview() {
     {
       id: 'in-progress',
       title: 'In Progress',
-      value: statistics.inProgress?.count?.toString() || '0',
+      value: locationFilteredStatistics.inProgress.count.toString(),
       description: 'Currently being delivered',
       color: '#3B82F6',
       bgGradient: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)'
     },
-    {
-      id: 'pending',
-      title: 'Pending',
-      value: statistics.pending?.count?.toString() || '0',
-      description: 'Awaiting assignment',
-      color: '#FB923C',
-      bgGradient: 'linear-gradient(135deg, #FB923C 0%, #F97316 100%)'
-    },
+    // {
+    //   id: 'pending',
+    //   title: 'Pending',
+    //   value: locationFilteredStatistics.pending.count.toString(),
+    //   description: 'Awaiting assignment',
+    //   color: '#FB923C',
+    //   bgGradient: 'linear-gradient(135deg, #FB923C 0%, #F97316 100%)'
+    // },
     {
       id: 'cash-in-hand',
       title: 'Cash in Hand',
-      value: formatCurrency(statistics.cashInHand || 0),
+      value: formatCurrency(locationFilteredStatistics.cashInHand),
       description: 'Total cash with executives',
       color: '#06B6D4',
       bgGradient: 'linear-gradient(135deg, #06B6D4 0%, #14B8A6 100%)'
     }
-  ] : []
+  ]
 
   const userName = user?.name || 'User'
   const firstName = userName.split(' ')[0]
@@ -348,6 +400,29 @@ function LoyaltyRewardOverview() {
         </div>
       </div>
 
+      {/* Location Tabs */}
+      <div className="location-tabs-container">
+        <button
+          className={`location-tab ${selectedLocationId === null ? 'active' : ''}`}
+          onClick={() => setSelectedLocationId(null)}
+        >
+          All
+        </button>
+        {locations.map((location) => {
+          const locationId = location._id || location.id
+          const isActive = selectedLocationId && locationId && String(selectedLocationId) === String(locationId)
+          return (
+            <button
+              key={locationId}
+              className={`location-tab ${isActive ? 'active' : ''}`}
+              onClick={() => setSelectedLocationId(locationId)}
+            >
+              {location.name}
+            </button>
+          )
+        })}
+      </div>
+
       {error && (
         <div style={{ 
           padding: '1rem', 
@@ -377,12 +452,12 @@ function LoyaltyRewardOverview() {
                   <path d="M14 7V14L18 18" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               )}
-              {card.id === 'pending' && (
+              {/* {card.id === 'pending' && (
                 <svg width="22" height="22" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M14 7V14L18 18" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                   <circle cx="14" cy="14" r="10" stroke="white" strokeWidth="2"/>
                 </svg>
-              )}
+              )} */}
               {card.id === 'cash-in-hand' && (
                 <svg width="22" height="22" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M14 7C17.866 7 21 10.134 21 14C21 17.866 17.866 21 14 21M7 14C7 10.134 10.134 7 14 7" stroke="white" strokeWidth="2" strokeLinecap="round"/>
@@ -457,7 +532,7 @@ function LoyaltyRewardOverview() {
                 }}
               >
                 <option value="">All Status</option>
-                <option value="pending">Pending</option>
+                {/* <option value="pending">Pending</option> */}
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>
               </select>
