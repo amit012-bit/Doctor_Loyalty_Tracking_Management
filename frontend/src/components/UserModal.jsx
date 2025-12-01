@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import './CreateTransactionModal.css'
-import { X } from 'lucide-react'
+import { X, Eye, EyeOff } from 'lucide-react'
 import { createUser, updateUserById, getUserById } from '../services/User'
 import { getLocations } from '../services/Location'
 
@@ -8,6 +8,7 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [locations, setLocations] = useState([])
+  const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -91,6 +92,7 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
       })
       setError('')
       setIsEditMode(false)
+      setShowPassword(false)
     }
   }, [isOpen, defaultRole])
 
@@ -281,25 +283,35 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
               </small>
             </div>
 
-            <div className="form-group">
+            {defaultRole === 'executive' && (<div className="form-group">
               <label htmlFor="password" className="form-label">
                 Password {!isEditMode && '*'}
               </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="form-input"
-                required={!isEditMode}
-                minLength={isEditMode ? 0 : 6}
-                placeholder={isEditMode ? "Enter new password (optional)" : "Enter password (min 6 characters)"}
-              />
+              <div className="password-input-wrapper">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="form-input"
+                  required={!isEditMode}
+                  minLength={isEditMode ? 0 : 6}
+                  placeholder={isEditMode ? "Enter new password (optional)" : "Enter password (min 6 characters)"}
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               {isEditMode && (
                 <small className="form-hint">(leave blank to keep current)</small>
               )}
-            </div>
+            </div>)}
 
             <div className="form-group">
               <label htmlFor="role" className="form-label">

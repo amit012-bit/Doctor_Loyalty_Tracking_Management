@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import './Login.css'
 import { loginUser } from '../services/User'
-import { Mail, Lock, LogIn, Shield, CheckCircle2, Package } from 'lucide-react'
+import { Mail, Lock, LogIn, Shield, CheckCircle2, Package, Eye, EyeOff } from 'lucide-react'
 
 function Login({ onLogin }) {
   const [formData, setFormData] = useState({
@@ -10,6 +10,7 @@ function Login({ onLogin }) {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -130,17 +131,27 @@ function Login({ onLogin }) {
                   <Lock size={18} />
                   Password
                 </label>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="form-input"
-                  placeholder="Enter your password"
-                  required
-                  autoComplete="current-password"
-                />
+                <div className="password-input-wrapper">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="form-input"
+                    placeholder="Enter your password"
+                    required
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <button
