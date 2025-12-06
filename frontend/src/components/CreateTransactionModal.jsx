@@ -448,12 +448,12 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
           >
             Individual
           </button>
-          <button
+          {/* <button
             className={`modal-tab ${activeTab === 'bulk' ? 'active' : ''}`}
             onClick={() => setActiveTab('bulk')}
           >
             Bulk Upload
-          </button>
+          </button> */}
         </div>
 
         {activeTab === 'individual' ? (
