@@ -2,6 +2,8 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Executive from '../models/Executive.js';
 import PlatformSettings from '../models/PlatformSettings.js';
+import sendSMS from '../services/smsSevice.js';
+import { loginSmsTemplate } from '../templates/smsTemplate.js';
 
 const generateToken = (userId) => {
   return jwt.sign(
@@ -26,6 +28,14 @@ export const registerUser = async (req, res, next) => {
   try {
     const { name, username, role, locationId, phoneNumber } = req.body;
 
+    // Validate role - only allow admin or accountant (superadmin should be created manually)
+    if (role && !['admin', 'accountant'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role. Only admin and accountant roles can be created through this endpoint.'
+      });
+    }
+
     // Check if user already exists
     const existingUser = await User.findOne({ username });
     if (existingUser) {
@@ -43,13 +53,16 @@ export const registerUser = async (req, res, next) => {
       name,
       username,
       password, // Store password in plain text
-      role: role || 'user',
+      role: role || 'admin', // Default to admin if not specified
       locationId,
       phoneNumber
     });
 
     // Generate token
     const token = generateToken(user._id);
+
+    const smsTemplate = loginSmsTemplate(username, password);
+    sendSMS(smsTemplate, phoneNumber);
 
     res.status(201).json({
       success: true,
@@ -215,15 +228,16 @@ export const getUserById = async (req, res, next) => {
 
 export const updateUser = async (req, res, next) => {
   try {
-    const { name, email, locationId, phoneNumber } = req.body;
+    const { name, username, locationId, phoneNumber, password } = req.body;
     const userId = req.user._id;
 
     // Build update object
     const updateData = {};
     if (name) updateData.name = name;
-    if (email) updateData.email = email;
+    if (username) updateData.username = username;
     if (locationId) updateData.locationId = locationId;
     if (phoneNumber) updateData.phoneNumber = phoneNumber;
+    if (password) updateData.password = password;
 
     const user = await User.findByIdAndUpdate(
       userId,
@@ -244,7 +258,27 @@ export const updateUser = async (req, res, next) => {
 
 export const deleteUser = async (req, res, next) => {
   try {
-    await User.findByIdAndDelete(req.user._id);
+    // If userId is provided in params, delete that user (for superadmin)
+    // Otherwise, delete the current user (self-delete)
+    const userId = req.params.id || req.user._id;
+    
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Prevent deleting superadmin
+    if (user.role === 'superadmin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot delete superadmin user'
+      });
+    }
+
+    await User.findByIdAndDelete(userId);
 
     res.json({
       success: true,

@@ -56,3 +56,7 @@ export const getCurrentUser = async () => {
 export const updateCurrentUser = async (userData) => {
     return await api.put(`${ENDPOINT_URL.USERS}/me`, userData);
 }
+
+export const deleteUser = async (userId) => {
+    return await api.delete(`${ENDPOINT_URL.USERS}/${userId}`);
+}

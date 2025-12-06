@@ -211,7 +211,7 @@ export const createTransaction = async (req, res, next) => {
     // Send OTP email to doctor if OTP was generated
     if (otp) {
       try {
-       const smsTemplate = transactionSmsTemplate(transaction, populatedTransaction.executiveId.name);
+       const smsTemplate = transactionSmsTemplate(transaction);
        sendSMS(smsTemplate, doctorMobileNumber.mobileNumber);
       } catch (error) {
         console.error('❌ Error sending SMS:', error.message);
@@ -470,8 +470,7 @@ export const resendOTP = async (req, res, next) => {
 
     // Send OTP via SMS using the same OTP (not generating a new one)
     try {
-      const executiveName = transaction.executiveId?.name || 'Executive';
-      const smsTemplate = transactionSmsTemplate(transaction, executiveName);
+      const smsTemplate = transactionSmsTemplate(transaction);
       await sendSMS(smsTemplate, doctorMobileNumber);
       console.log(`📱 OTP resent to doctor: ${doctorMobileNumber}`);
     } catch (smsError) {

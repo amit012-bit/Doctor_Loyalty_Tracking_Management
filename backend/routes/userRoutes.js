@@ -98,6 +98,7 @@ router.put(
   updateUser
 );
 router.delete('/me', authenticate, checkPlatformStatus, deleteUser);
+router.delete('/:id', authenticate, checkPlatformStatus, authorize('superadmin'), deleteUser);
 router.get('/', authenticate, checkPlatformStatus, authorize('admin', 'doctor', 'superadmin', 'accountant'), getUsers);
 router.get('/:id', authenticate, checkPlatformStatus, getUserById);
 router.put(
