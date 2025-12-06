@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import Executive from '../models/Executive.js';
 
 /**
  * Authentication middleware
@@ -20,8 +21,18 @@ export const authenticate = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-in-production');
 
-    // Get user from database (excluding password)
-    const user = await User.findById(decoded.userId).select('-password');
+    // Try to find user in User collection first (admin, accountant, superadmin)
+    let user = await User.findById(decoded.userId).select('-password');
+
+    // If not found in User collection, try Executive collection
+    if (!user) {
+      user = await Executive.findById(decoded.userId).select('-password');
+      // If found in Executive, set role to 'executive'
+      if (user) {
+        user = user.toObject();
+        user.role = 'executive';
+      }
+    }
 
     if (!user) {
       return res.status(401).json({

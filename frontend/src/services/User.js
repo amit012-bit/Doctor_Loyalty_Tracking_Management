@@ -25,8 +25,8 @@ api.interceptors.request.use(
   }
 );
 
-export const loginUser = async (email, password) => {
-    return await axios.post(ENDPOINT_URL.LOGIN, { email, password });
+export const loginUser = async (username, password) => {
+    return await axios.post(ENDPOINT_URL.LOGIN, { username, password });
 }
 
 export const registerUser = async (userData) => {
@@ -47,6 +47,10 @@ export const updateUserById = async (userId, userData) => {
 
 export const getUserById = async (userId) => {
     return await api.get(`${ENDPOINT_URL.USERS}/${userId}`);
+}
+
+export const getCurrentUser = async () => {
+    return await api.get(`${ENDPOINT_URL.USERS}/me`);
 }
 
 export const updateCurrentUser = async (userData) => {

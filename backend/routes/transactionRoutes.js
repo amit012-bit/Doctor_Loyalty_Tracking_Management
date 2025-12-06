@@ -7,40 +7,32 @@ import {
   createTransaction,
   createBulkTransactions,
   updateTransaction,
-  deleteTransaction,
-  verifyOTP
+  verifyOTP,
+  resendOTP
 } from '../controllers/transactionController.js';
 import Transaction from '../models/Transaction.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { checkPlatformStatus } from '../middleware/platformStatus.js';
 import { validate } from '../middleware/validation.js';
 
 const router = express.Router();
 
 
-router.get('/statistics', authenticate, getTransactionStatistics);
-router.get('/', authenticate, getTransactions);
-router.get('/:id', authenticate, getTransactionById);
+router.get('/statistics', authenticate, checkPlatformStatus, getTransactionStatistics);
+router.get('/', authenticate, checkPlatformStatus, getTransactions);
+router.get('/:id', authenticate, checkPlatformStatus, getTransactionById);
 router.post(
   '/',
   authenticate,
+  checkPlatformStatus,
   authorize('admin', 'superadmin', 'accountant'),
   [
     body('doctorId')
       .notEmpty()
       .withMessage('Doctor ID is required'),
     body('executiveId')
-      .optional()
-      .custom((value, { req }) => {
-        // Executive is optional for pending status
-        if (req.body.status === 'pending' || !req.body.status) {
-          return true;
-        }
-        // For other statuses, executive is required
-        if (!value) {
-          throw new Error('Executive ID is required for non-pending transactions');
-        }
-        return true;
-      }),
+      .notEmpty()
+      .withMessage('Executive ID is required'),
     body('locationId')
       .notEmpty()
       .withMessage('Location ID is required'),
@@ -64,6 +56,7 @@ router.post(
 router.post(
   '/bulk',
   authenticate,
+  checkPlatformStatus,
   [
     body('transactions')
       .isArray({ min: 1 })
@@ -90,6 +83,7 @@ router.post(
 router.put(
   '/:id',
   authenticate,
+  checkPlatformStatus,
   authorize('admin', 'superadmin', 'accountant'),
   [
     body('amount')
@@ -115,6 +109,7 @@ router.put(
 router.patch(
   '/:id/assign-executive',
   authenticate,
+  checkPlatformStatus,
   [
     body('executiveId')
       .notEmpty()
@@ -150,8 +145,8 @@ router.patch(
         updateData,
         { new: true, runValidators: true }
       )
-        .populate('doctorId', 'name email')
-        .populate('executiveId', 'name email')
+        .populate('doctorId', 'name mobileNumber clinicName locationId status')
+        .populate('executiveId', 'name phoneNumber locationId status')
         .populate('locationId', 'name address');
 
       res.json({
@@ -167,6 +162,7 @@ router.patch(
 router.patch(
   '/:id/verify-otp',
   authenticate,
+  checkPlatformStatus,
   [
     body('otp')
       .notEmpty()
@@ -180,7 +176,12 @@ router.patch(
   verifyOTP
 );
 
-router.delete('/:id', authenticate, authorize('admin', 'superadmin'), deleteTransaction);
+router.post(
+  '/:id/resend-otp',
+  authenticate,
+  checkPlatformStatus,
+  resendOTP
+);
 
 export default router;
 

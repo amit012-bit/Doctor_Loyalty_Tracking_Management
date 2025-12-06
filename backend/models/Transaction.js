@@ -7,12 +7,12 @@ import mongoose from 'mongoose';
 const transactionSchema = new mongoose.Schema({
   doctorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Doctor',
     required: [true, 'Doctor ID is required']
   },
   executiveId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Executive',
     required: false,
     default: null
   },
@@ -50,6 +50,11 @@ const transactionSchema = new mongoose.Schema({
     default: null,
     minlength: [6, 'OTP must be 6 digits'],
     maxlength: [6, 'OTP must be 6 digits']
+  },
+  tat: {
+    type: Number,
+    default: null,
+    min: [0, 'TAT cannot be negative']
   }
 }, {
   timestamps: true

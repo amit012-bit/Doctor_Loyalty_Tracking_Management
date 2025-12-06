@@ -11,6 +11,7 @@ import {
   deleteUser
 } from '../controllers/userController.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { checkPlatformStatus } from '../middleware/platformStatus.js';
 import { validate } from '../middleware/validation.js';
 
 const router = express.Router();
@@ -22,13 +23,14 @@ router.post(
       .trim()
       .isLength({ min: 2, max: 50 })
       .withMessage('Name must be between 2 and 50 characters'),
-    body('email')
-      .isEmail()
-      .normalizeEmail()
-      .withMessage('Please provide a valid email'),
-    body('password')
-      .isLength({ min: 6 })
-      .withMessage('Password must be at least 6 characters long'),
+    body('username')
+      .trim()
+      .notEmpty()
+      .withMessage('Username is required')
+      .isLength({ min: 3, max: 30 })
+      .withMessage('Username must be between 3 and 30 characters')
+      .matches(/^[a-zA-Z0-9_]+$/)
+      .withMessage('Username can only contain letters, numbers, and underscores'),
     body('phoneNumber')
       .notEmpty()
       .withMessage('Phone number is required')
@@ -44,10 +46,14 @@ router.post(
 router.post(
   '/login',
   [
-    body('email')
-      .isEmail()
-      .normalizeEmail()
-      .withMessage('Please provide a valid email'),
+    body('username')
+      .trim()
+      .notEmpty()
+      .withMessage('Username is required')
+      .isLength({ min: 3, max: 30 })
+      .withMessage('Username must be between 3 and 30 characters')
+      .matches(/^[a-zA-Z0-9_]+$/)
+      .withMessage('Username can only contain letters, numbers, and underscores'),
     body('password')
       .notEmpty()
       .withMessage('Password is required')
@@ -55,21 +61,24 @@ router.post(
   validate,
   loginUser
 );
-router.get('/me', authenticate, getCurrentUser);
+router.get('/me', authenticate, checkPlatformStatus, getCurrentUser);
 router.put(
   '/me',
   authenticate,
+  checkPlatformStatus,
   [
     body('name')
       .optional()
       .trim()
       .isLength({ min: 2, max: 50 })
       .withMessage('Name must be between 2 and 50 characters'),
-    body('email')
+    body('username')
       .optional()
-      .isEmail()
-      .normalizeEmail()
-      .withMessage('Please provide a valid email'),
+      .trim()
+      .isLength({ min: 3, max: 30 })
+      .withMessage('Username must be between 3 and 30 characters')
+      .matches(/^[a-zA-Z0-9_]+$/)
+      .withMessage('Username can only contain letters, numbers, and underscores'),
     body('phoneNumber')
       .optional()
       .matches(/^\+91[\s-]?[6-9]\d{9}$/)
@@ -78,16 +87,23 @@ router.put(
       .optional()
       .notEmpty()
       .withMessage('Location ID cannot be empty')
+      .isMongoId()
+      .withMessage('Location ID must be a valid MongoDB ObjectId'),
+    body('password')
+      .optional()
+      .isLength({ min: 6 })
+      .withMessage('Password must be at least 6 characters long')
   ],
   validate,
   updateUser
 );
-router.delete('/me', authenticate, deleteUser);
-router.get('/', authenticate, authorize('admin', 'doctor', 'superadmin', 'accountant'), getUsers);
-router.get('/:id', authenticate, getUserById);
+router.delete('/me', authenticate, checkPlatformStatus, deleteUser);
+router.get('/', authenticate, checkPlatformStatus, authorize('admin', 'doctor', 'superadmin', 'accountant'), getUsers);
+router.get('/:id', authenticate, checkPlatformStatus, getUserById);
 router.put(
   '/:id',
   authenticate,
+  checkPlatformStatus,
   authorize('admin', 'superadmin'),
   [
     body('name')
@@ -95,11 +111,6 @@ router.put(
       .trim()
       .isLength({ min: 2, max: 50 })
       .withMessage('Name must be between 2 and 50 characters'),
-    body('email')
-      .optional()
-      .isEmail()
-      .normalizeEmail()
-      .withMessage('Please provide a valid email'),
     body('phoneNumber')
       .optional()
       .matches(/^\+91[\s-]?[6-9]\d{9}$/)
@@ -107,11 +118,17 @@ router.put(
     body('locationId')
       .optional()
       .notEmpty()
-      .withMessage('Location ID cannot be empty'),
+      .withMessage('Location ID cannot be empty')
+      .isMongoId()
+      .withMessage('Location ID must be a valid MongoDB ObjectId'),
     body('role')
       .optional()
       .isIn(['admin', 'doctor', 'executive', 'superadmin', 'accountant'])
-      .withMessage('Invalid role')
+      .withMessage('Invalid role'),
+    body('password')
+      .optional()
+      .isLength({ min: 6 })
+      .withMessage('Password must be at least 6 characters long')
   ],
   validate,
   updateUserById

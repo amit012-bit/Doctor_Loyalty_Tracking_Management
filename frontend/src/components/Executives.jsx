@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react'
 import './LoyaltyRewardOverview.css'
-import { getUsers } from '../services/User'
-import { getLocations } from '../services/Location'
+import './CreateTransactionModal.css'
+import { getExecutives, deleteExecutive } from '../services/Executive'
 import UserModal from './UserModal'
-import { Plus, Edit2 } from 'lucide-react'
+import { Plus, Edit2, Trash2, X, AlertTriangle } from 'lucide-react'
 
 function Executives() {
   const [user, setUser] = useState(null)
   const [executives, setExecutives] = useState([])
-  const [locations, setLocations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingUserId, setEditingUserId] = useState(null)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [editingExecutiveId, setEditingExecutiveId] = useState(null)
+  const [deletingExecutive, setDeletingExecutive] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const itemsPerPage = 5
 
   useEffect(() => {
@@ -33,18 +35,11 @@ function Executives() {
       setLoading(true)
       setError('')
 
-      const [usersRes, locationsRes] = await Promise.all([
-        getUsers(),
-        getLocations()
-      ])
+      const executivesRes = await getExecutives()
 
-      if (usersRes.data.success) {
-        const users = usersRes.data.data.users || []
-        setExecutives(users.filter(u => u.role === 'executive'))
-      }
-
-      if (locationsRes.data.success) {
-        setLocations(locationsRes.data.data.locations || [])
+      if (executivesRes.data.success) {
+        const executives = executivesRes.data.data.executives || []
+        setExecutives(executives)
       }
     } catch (err) {
       console.error('Error fetching data:', err)
@@ -58,36 +53,62 @@ function Executives() {
     fetchData()
   }, [])
 
-  const handleUserCreated = () => {
+  const handleExecutiveCreated = () => {
     fetchData()
   }
 
-  const handleEdit = (userId) => {
-    setEditingUserId(userId)
+  const handleEdit = (executiveId) => {
+    setEditingExecutiveId(executiveId)
     setIsModalOpen(true)
   }
 
   const handleAddNew = () => {
-    setEditingUserId(null)
+    setEditingExecutiveId(null)
     setIsModalOpen(true)
   }
 
   const handleModalClose = () => {
     setIsModalOpen(false)
-    setEditingUserId(null)
+    setEditingExecutiveId(null)
+  }
+
+  const handleDeleteClick = (executive) => {
+    setDeletingExecutive(executive)
+    setIsDeleteModalOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingExecutive) return
+    
+    try {
+      setDeleting(true)
+      setError('')
+      await deleteExecutive(deletingExecutive._id)
+      setIsDeleteModalOpen(false)
+      setDeletingExecutive(null)
+      fetchData()
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete executive. Please try again.')
+      console.error('Delete executive error:', err)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleDeleteCancel = () => {
+    setIsDeleteModalOpen(false)
+    setDeletingExecutive(null)
   }
 
   const filteredExecutives = executives.filter(executive => {
     if (!searchQuery) return true
     
     const name = executive.name || ''
-    const email = executive.email || ''
     const phoneNumber = executive.phoneNumber || ''
     const locationName = executive.locationId?.name || ''
     const searchLower = searchQuery.toLowerCase()
     
     return name.toLowerCase().includes(searchLower) || 
-           email.toLowerCase().includes(searchLower) ||
            phoneNumber.toLowerCase().includes(searchLower) ||
            locationName.toLowerCase().includes(searchLower)
   })
@@ -156,7 +177,7 @@ function Executives() {
               </svg>
               <input
                 type="text"
-                placeholder="Search by name,phone, or location..."
+                placeholder="Search by name, phone, or location..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value)
@@ -178,9 +199,9 @@ function Executives() {
             <thead>
               <tr>
                 <th>Name</th>
-                {/* <th>Email</th> */}
                 <th>Phone Number</th>
                 <th>Location</th>
+                <th>Status</th>
                 <th>Created At</th>
                 {isAdmin && <th>Actions</th>}
               </tr>
@@ -188,7 +209,7 @@ function Executives() {
             <tbody>
               {filteredExecutives.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 5 : 4} style={{ textAlign: 'center', padding: '2rem' }}>
+                  <td colSpan={isAdmin ? 6 : 5} style={{ textAlign: 'center', padding: '2rem' }}>
                     {loading ? 'Loading...' : 'No executives found'}
                   </td>
                 </tr>
@@ -196,9 +217,20 @@ function Executives() {
                 paginatedExecutives.map((executive) => (
                   <tr key={executive._id}>
                     <td>{executive.name || 'N/A'}</td>
-                    {/* <td>{executive.email || 'N/A'}</td> */}
                     <td>{executive.phoneNumber || 'N/A'}</td>
                     <td>{executive.locationId?.name || executive.locationId?.address || 'N/A'}</td>
+                    <td>
+                      <span style={{
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        backgroundColor: executive.status === 'active' ? '#D1FAE5' : '#FEE2E2',
+                        color: executive.status === 'active' ? '#065F46' : '#991B1B'
+                      }}>
+                        {executive.status || 'N/A'}
+                      </span>
+                    </td>
                     <td>
                       {executive.createdAt 
                         ? new Date(executive.createdAt).toLocaleDateString('en-IN', { 
@@ -210,14 +242,46 @@ function Executives() {
                     </td>
                     {isAdmin && (
                       <td>
-                        <button
-                          className="view-details-btn"
-                          onClick={() => handleEdit(executive._id)}
-                          style={{ width: 'auto', minWidth: '100px' }}
-                        >
-                          <Edit2 size={14} />
-                          Edit
-                        </button>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          <button
+                            onClick={() => handleEdit(executive._id)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#3B82F6',
+                              transition: 'color 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.target.style.color = '#2563EB'}
+                            onMouseLeave={(e) => e.target.style.color = '#3B82F6'}
+                            title="Edit"
+                          >
+                            <Edit2 size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(executive)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#EF4444',
+                              transition: 'color 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.target.style.color = '#DC2626'}
+                            onMouseLeave={(e) => e.target.style.color = '#EF4444'}
+                            title="Delete"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -225,6 +289,99 @@ function Executives() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="mobile-cards-container">
+          {filteredExecutives.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+              {loading ? 'Loading...' : 'No executives found'}
+            </div>
+          ) : (
+            paginatedExecutives.map((executive) => (
+              <div key={executive._id} className="transaction-card">
+                <div className="card-row">
+                  <span className="card-label">Name</span>
+                  <span className="card-value">{executive.name || 'N/A'}</span>
+                </div>
+                <div className="card-row">
+                  <span className="card-label">Phone Number</span>
+                  <span className="card-value">{executive.phoneNumber || 'N/A'}</span>
+                </div>
+                <div className="card-row">
+                  <span className="card-label">Location</span>
+                  <span className="card-value">{executive.locationId?.name || executive.locationId?.address || 'N/A'}</span>
+                </div>
+                <div className="card-row">
+                  <span className="card-label">Status</span>
+                  <span className="card-value">
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      backgroundColor: executive.status === 'active' ? '#D1FAE5' : '#FEE2E2',
+                      color: executive.status === 'active' ? '#065F46' : '#991B1B'
+                    }}>
+                      {executive.status || 'N/A'}
+                    </span>
+                  </span>
+                </div>
+                <div className="card-row">
+                  <span className="card-label">Created At</span>
+                  <span className="card-value">
+                    {executive.createdAt 
+                      ? new Date(executive.createdAt).toLocaleDateString('en-IN', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })
+                      : 'N/A'}
+                  </span>
+                </div>
+                {isAdmin && (
+                  <div className="card-actions">
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'center' }}>
+                      <button
+                        onClick={() => handleEdit(executive._id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#3B82F6',
+                          transition: 'color 0.2s'
+                        }}
+                        title="Edit"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(executive)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#EF4444',
+                          transition: 'color 0.2s'
+                        }}
+                        title="Delete"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
 
         {/* Pagination Controls */}
@@ -287,13 +444,103 @@ function Executives() {
       <UserModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
-        onSuccess={handleUserCreated}
-        userId={editingUserId}
+        onSuccess={handleExecutiveCreated}
+        personId={editingExecutiveId}
         userRole="executive"
       />
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="modal-overlay" onClick={handleDeleteCancel}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <AlertTriangle size={24} color="#EF4444" />
+                Confirm Delete
+              </h2>
+              <button className="modal-close-btn" onClick={handleDeleteCancel}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: '32px' }}>
+              <p style={{ 
+                fontSize: '16px', 
+                color: 'var(--text-primary)', 
+                marginBottom: '24px',
+                lineHeight: '1.6'
+              }}>
+                Are you sure you want to delete <strong>{deletingExecutive?.name}</strong>? This action cannot be undone.
+              </p>
+
+              <div style={{ 
+                display: 'flex', 
+                gap: '12px', 
+                justifyContent: 'flex-end' 
+              }}>
+                <button
+                  onClick={handleDeleteCancel}
+                  disabled={deleting}
+                  style={{
+                    padding: '12px 24px',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    borderRadius: '8px',
+                    border: '2px solid var(--border-color)',
+                    background: 'var(--card-bg)',
+                    color: 'var(--text-primary)',
+                    cursor: deleting ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    opacity: deleting ? 0.6 : 1
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!deleting) {
+                      e.target.style.background = 'var(--bg-primary)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!deleting) {
+                      e.target.style.background = 'var(--card-bg)'
+                    }
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={deleting}
+                  style={{
+                    padding: '12px 24px',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: '#EF4444',
+                    color: 'white',
+                    cursor: deleting ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    opacity: deleting ? 0.6 : 1
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!deleting) {
+                      e.target.style.background = '#DC2626'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!deleting) {
+                      e.target.style.background = '#EF4444'
+                    }
+                  }}
+                >
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 export default Executives
-

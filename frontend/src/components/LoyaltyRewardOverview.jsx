@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import './LoyaltyRewardOverview.css'
-import { getTransactions, getTransactionStatistics, assignExecutive, verifyOTP } from '../services/Transaction'
+import { getTransactions, getTransactionStatistics, assignExecutive, verifyOTP, resendOTP } from '../services/Transaction'
 import { getLocations } from '../services/Location'
 import { getUsers } from '../services/User'
+import { getExecutives } from '../services/Executive'
 import CreateTransactionModal from './CreateTransactionModal'
-import { Plus, UserPlus, Eye, ChevronDown, ChevronUp, Shield } from 'lucide-react'
+import { Plus, UserPlus, Eye, ChevronDown, ChevronUp, Shield, Clock, X } from 'lucide-react'
 
 function LoyaltyRewardOverview() {
   const [user, setUser] = useState(null)
   const [transactions, setTransactions] = useState([])
+  const [allTransactions, setAllTransactions] = useState([]) // All transactions for location stats
   const [statistics, setStatistics] = useState(null)
   const [locations, setLocations] = useState([])
   const [executives, setExecutives] = useState([])
@@ -19,12 +21,17 @@ function LoyaltyRewardOverview() {
   const [selectedLocationId, setSelectedLocationId] = useState(null) // null = "All", locationId = specific location
   const [currentPage, setCurrentPage] = useState(1)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isExecutiveTATModalOpen, setIsExecutiveTATModalOpen] = useState(false)
+  const [selectedLocationForTAT, setSelectedLocationForTAT] = useState(null)
   const [assigningExecutive, setAssigningExecutive] = useState(null)
   const [selectedExecutive, setSelectedExecutive] = useState({})
   const [expandedRows, setExpandedRows] = useState(new Set())
   const [otpValues, setOtpValues] = useState({})
   const [verifyingOtp, setVerifyingOtp] = useState(null)
+  const [resendingOtp, setResendingOtp] = useState(null)
   const [otpErrors, setOtpErrors] = useState({})
+  const [otpSuccess, setOtpSuccess] = useState({})
+  const [canViewLocationStats, setCanViewLocationStats] = useState(false)
   const itemsPerPage = 5
 
   useEffect(() => {
@@ -32,6 +39,7 @@ function LoyaltyRewardOverview() {
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser))
+        setCanViewLocationStats(['admin', 'superadmin', 'accountant'].includes(JSON.parse(storedUser).role))
       } catch (error) {
         console.error('Error parsing user:', error)
       }
@@ -43,49 +51,76 @@ function LoyaltyRewardOverview() {
       setLoading(true)
       setError('')
 
-      // Get user role from user state
-      const currentUserRole = user?.role
-
-        // Only fetch users if user has permission to assign executives
-        const transactionFilters = {}
-        if (statusFilter) transactionFilters.status = statusFilter
-        if (selectedLocationId) transactionFilters.locationId = selectedLocationId
+      // Only fetch users if user has permission to assign executives
+      const transactionFilters = {}
+      if (statusFilter) transactionFilters.status = statusFilter
+      if (selectedLocationId) transactionFilters.locationId = selectedLocationId
+      
+      const requests = [
+        getTransactions(Object.keys(transactionFilters).length > 0 ? transactionFilters : {}),
+        getTransactionStatistics()
+      ]
         
-        const requests = [
-          getTransactions(Object.keys(transactionFilters).length > 0 ? transactionFilters : {}),
-          getTransactionStatistics(),
-          getLocations()
-        ]
+      // Only fetch location stats data if user has permission
+      if (canViewLocationStats) {
+        requests.push(
+          getTransactions({}), // Fetch all transactions for location stats
+          getLocations(),
+          getExecutives() // Fetch executives for location stats
+        )
+      }
+      
+    // // Only fetch users if role allows assigning executives
+    // if (canViewLocationStats) {
+    //   requests.push(getUsers())
+    // }
         
-        // Only fetch users if role allows assigning executives
-        if (['admin', 'superadmin', 'accountant'].includes(currentUserRole)) {
-          requests.push(getUsers())
-        }
-        
-        const results = await Promise.all(requests)
-        const transactionsRes = results[0]
-        const statsRes = results[1]
-        const locationsRes = results[2]
-        const usersRes = results[3]
+      const results = await Promise.all(requests)
+      const transactionsRes = results[0]
+      const statsRes = results[1]
+      let allTransactionsRes = null
+      let locationsRes = null
+      let executivesRes = null
+     // let usersRes = null
+      
+      if (canViewLocationStats) {
+        allTransactionsRes = results[2]
+        locationsRes = results[3]
+        executivesRes = results[4]
+      //  usersRes = results[5]
+      }
 
       if (transactionsRes.data.success) {
         setTransactions(transactionsRes.data.data.transactions || [])
+      }
+
+      if (canViewLocationStats && allTransactionsRes?.data?.success) {
+        setAllTransactions(allTransactionsRes.data.data.transactions || [])
+      } else if (!canViewLocationStats) {
+        setAllTransactions([])
       }
 
       if (statsRes.data.success) {
         setStatistics(statsRes.data.data.statistics)
       }
 
-        if (locationsRes.data.success) {
-          setLocations(locationsRes.data.data.locations || [])
-        }
+      if (canViewLocationStats && locationsRes?.data?.success) {
+        setLocations(locationsRes.data.data.locations || [])
+      } else if (!canViewLocationStats) {
+        setLocations([])
+      }
 
-        if (usersRes?.data?.success) {
-          const users = usersRes.data.data.users || []
-          setExecutives(users.filter(u => u.role === 'executive'))
-        } else if (!['admin', 'superadmin', 'accountant'].includes(currentUserRole)) {
-          setExecutives([])
-        }
+      if (canViewLocationStats && executivesRes?.data?.success) {
+        const executives = executivesRes.data.data.executives || []
+        setExecutives(executives)
+      } else if (!canViewLocationStats) {
+        setExecutives([])
+      }
+
+      // if (usersRes?.data?.success) {
+      //   const users = usersRes.data.data.users || []
+      //   // Keep this for backward compatibility if needed
+      // }
     } catch (err) {
       console.error('Error fetching data:', err)
       setError(err.response?.data?.message || 'Failed to fetch data. Please try again.')
@@ -181,6 +216,11 @@ function LoyaltyRewardOverview() {
         delete newState[transactionId]
         return newState
       })
+      setOtpSuccess(prev => {
+        const newState = { ...prev }
+        delete newState[transactionId]
+        return newState
+      })
       
       const response = await verifyOTP(transactionId, otp)
       
@@ -211,8 +251,44 @@ function LoyaltyRewardOverview() {
     }
   }
 
+  const handleResendOtp = async (transactionId) => {
+    try {
+      setResendingOtp(transactionId)
+      setOtpErrors(prev => {
+        const newState = { ...prev }
+        delete newState[transactionId]
+        return newState
+      })
+      
+      const response = await resendOTP(transactionId)
+      
+      if (response.data.success) {
+        setOtpSuccess(prev => ({
+          ...prev,
+          [transactionId]: 'OTP resent successfully to doctor'
+        }))
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setOtpSuccess(prev => {
+            const newState = { ...prev }
+            delete newState[transactionId]
+            return newState
+          })
+        }, 3000)
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'Failed to resend OTP. Please try again.'
+      setOtpErrors(prev => ({
+        ...prev,
+        [transactionId]: errorMessage
+      }))
+    } finally {
+      setResendingOtp(null)
+    }
+  }
+
   const isInProgress = (status) => {
-    return status?.toLowerCase() === 'in_progress' || status === 'IN progress' || status?.toLowerCase() === 'in progress'
+    return status?.toLowerCase() === 'in_progress'
   }
 
   const getStatusNotification = (status) => {
@@ -330,6 +406,95 @@ function LoyaltyRewardOverview() {
 
   const locationFilteredStatistics = calculateStatisticsFromTransactions()
 
+
+  // Calculate location statistics (only if user has permission)
+  const calculateLocationStatistics = () => {
+    if (!canViewLocationStats) {
+      return []
+    }
+    
+    const locationStats = {}
+    
+    // Initialize stats for each location
+    locations.forEach(location => {
+      const locationId = location._id || location.id
+      locationStats[locationId] = {
+        name: location.name,
+        completed: 0,
+        inProgress: 0,
+        executives: []
+      }
+    })
+
+    // Calculate stats from all transactions
+    allTransactions.forEach(transaction => {
+      const locationId = transaction.locationId?._id || transaction.locationId
+      if (!locationId) return
+      
+      const locationIdStr = locationId.toString()
+      if (locationStats[locationIdStr]) {
+        if (transaction.status === 'completed') {
+          locationStats[locationIdStr].completed++
+        } else if (transaction.status === 'in_progress') {
+          locationStats[locationIdStr].inProgress++
+        }
+      }
+    })
+
+    // Calculate executive average TAT for each location
+    executives.forEach(executive => {
+      const executiveLocationId = executive.locationId?._id || executive.locationId
+      if (!executiveLocationId) return
+      
+      const locationIdStr = executiveLocationId.toString()
+      if (locationStats[locationIdStr]) {
+        // Get all completed transactions for this executive
+        const executiveTransactions = allTransactions.filter(t => {
+          const tExecutiveId = t.executiveId?._id || t.executiveId
+          const tLocationId = t.locationId?._id || t.locationId
+          return tExecutiveId?.toString() === executive._id?.toString() &&
+                 tLocationId?.toString() === locationIdStr &&
+                 t.status === 'completed' &&
+                 t.tat !== null &&
+                 t.tat !== undefined
+        })
+
+        if (executiveTransactions.length > 0) {
+          // Calculate average TAT
+          const totalTAT = executiveTransactions.reduce((sum, t) => sum + (t.tat || 0), 0)
+          const avgTAT = totalTAT / executiveTransactions.length
+          
+          locationStats[locationIdStr].executives.push({
+            name: executive.name,
+            avgTAT: avgTAT,
+            completedCount: executiveTransactions.length
+          })
+        } else {
+          // Executive with no completed transactions yet
+          locationStats[locationIdStr].executives.push({
+            name: executive.name,
+            avgTAT: null,
+            completedCount: 0
+          })
+        }
+      }
+    })
+
+    // Sort executives by average TAT (lowest first, nulls last)
+    Object.keys(locationStats).forEach(locationId => {
+      locationStats[locationId].executives.sort((a, b) => {
+        if (a.avgTAT === null && b.avgTAT === null) return 0
+        if (a.avgTAT === null) return 1
+        if (b.avgTAT === null) return -1
+        return a.avgTAT - b.avgTAT
+      })
+    })
+
+    return Object.values(locationStats)
+  }
+
+  const locationStats = calculateLocationStatistics()
+
   const statsCards = [
     {
       id: 'delivered',
@@ -367,12 +532,11 @@ function LoyaltyRewardOverview() {
 
   const userName = user?.name || 'User'
   const firstName = userName.split(' ')[0]
-  const userRole = user?.role
   
-  // Role-based permissions
-  const canCreateTransaction = ['admin', 'superadmin', 'accountant'].includes(userRole)
-  const canAssignExecutive = ['admin', 'superadmin', 'accountant'].includes(userRole)
-  const isExecutive = userRole === 'executive'
+  // Role-based permissions (canViewLocationStats already defined above)
+  const canCreateTransaction = ['admin', 'superadmin', 'accountant'].includes(user?.role)
+  const canAssignExecutive = ['admin', 'superadmin', 'accountant'].includes(user?.role)
+  const isExecutive = user?.role === 'executive'
 
   if (loading) {
     return (
@@ -400,43 +564,8 @@ function LoyaltyRewardOverview() {
         </div>
       </div>
 
-      {/* Location Tabs */}
-      <div className="location-tabs-container">
-        <button
-          className={`location-tab ${selectedLocationId === null ? 'active' : ''}`}
-          onClick={() => setSelectedLocationId(null)}
-        >
-          All
-        </button>
-        {locations.map((location) => {
-          const locationId = location._id || location.id
-          const isActive = selectedLocationId && locationId && String(selectedLocationId) === String(locationId)
-          return (
-            <button
-              key={locationId}
-              className={`location-tab ${isActive ? 'active' : ''}`}
-              onClick={() => setSelectedLocationId(locationId)}
-            >
-              {location.name}
-            </button>
-          )
-        })}
-      </div>
-
-      {error && (
-        <div style={{ 
-          padding: '1rem', 
-          marginBottom: '1rem', 
-          backgroundColor: '#FEE2E2', 
-          color: '#991B1B', 
-          borderRadius: '8px' 
-        }}>
-          {error}
-        </div>
-      )}
-
-      {/* Stats Cards Row */}
-      <div className="stats-cards-row">
+        {/* Stats Cards Row */}
+        <div className="stats-cards-row">
         {statsCards.map((card) => (
           <div key={card.id} className="stat-card">
             <div className="stat-icon-wrapper" style={{ background: card.bgGradient }}>
@@ -474,6 +603,88 @@ function LoyaltyRewardOverview() {
           </div>
         ))}
       </div>
+
+
+      {/* Location Overview - Only for admin, superadmin, and accountant */}
+      {canViewLocationStats && locationStats.length > 0 && (
+        <>
+          <h2 className="card-title" style={{ marginTop: '2rem', marginBottom: '1rem', paddingLeft: '0.5rem' }}>Location Overview</h2>
+          <div className="location-cards-row">
+            {locationStats.map((locationStat) => (
+              <div key={locationStat.name} className="location-card">
+                <div className="location-card-header">
+                  <h3 className="location-card-name">{locationStat.name}</h3>
+                </div>
+                <div className="location-card-stats">
+                <div className="location-stat-item">
+                    <span className="location-stat-label">Total Assigned</span>
+                    <span className="location-stat-value completed">{locationStat.completed + locationStat.inProgress}</span>
+                  </div>
+                  <div className="location-stat-item">
+                    <span className="location-stat-label">Completed</span>
+                    <span className="location-stat-value completed">{locationStat.completed}</span>
+                  </div>
+                  <div className="location-stat-item">
+                    <span className="location-stat-label">In Progress</span>
+                    <span className="location-stat-value in-progress">{locationStat.inProgress}</span>
+                  </div>
+                </div>
+                {locationStat.executives && locationStat.executives.length > 0 && (
+                  <a
+                    className="view-executive-tat-link"
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setSelectedLocationForTAT(locationStat)
+                      setIsExecutiveTATModalOpen(true)
+                    }}
+                  >
+                    <Clock size={14} />
+                    <span>View Executive TAT</span>
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Location Tabs */}
+      {canViewLocationStats && (
+        <div className="location-tabs-container">
+        <button
+          className={`location-tab ${selectedLocationId === null ? 'active' : ''}`}
+          onClick={() => setSelectedLocationId(null)}
+        >
+          All
+        </button>
+        {locations.map((location) => {
+          const locationId = location._id || location.id
+          const isActive = selectedLocationId && locationId && String(selectedLocationId) === String(locationId)
+          return (
+            <button
+              key={locationId}
+              className={`location-tab ${isActive ? 'active' : ''}`}
+              onClick={() => setSelectedLocationId(locationId)}
+            >
+              {location.name}
+            </button>
+          )
+        })}
+      </div>
+      )}
+
+      {error && (
+        <div style={{ 
+          padding: '1rem', 
+          marginBottom: '1rem', 
+          backgroundColor: '#FEE2E2', 
+          color: '#991B1B', 
+          borderRadius: '8px' 
+        }}>
+          {error}
+        </div>
+      )}
 
       {/* Online Appointment Card */}
       <div className="appointment-card-full">
@@ -665,7 +876,7 @@ function LoyaltyRewardOverview() {
                     </tr>
                     {expandedRows.has(transaction._id) && transaction.status !== 'pending' && (
                       <tr className="expanded-row" key={`${transaction._id}-expanded`}>
-                        <td colSpan="8" className="expanded-cell">
+                        <td colSpan="9" className="expanded-cell">
                           <div className="transaction-details">
                             {isInProgress(transaction.status) ? (
                               <div className="otp-verification-section">
@@ -677,6 +888,19 @@ function LoyaltyRewardOverview() {
                                 {otpErrors[transaction._id] && (
                                   <div className="otp-error-message">
                                     {otpErrors[transaction._id]}
+                                  </div>
+                                )}
+                                {otpSuccess[transaction._id] && (
+                                  <div className="otp-success-message" style={{
+                                    padding: '12px 16px',
+                                    backgroundColor: '#F0FDF4',
+                                    border: '1px solid #BBF7D0',
+                                    borderRadius: '8px',
+                                    color: '#16A34A',
+                                    fontSize: '14px',
+                                    marginBottom: '16px'
+                                  }}>
+                                    {otpSuccess[transaction._id]}
                                   </div>
                                 )}
                                 <div className="otp-input-container">
@@ -710,6 +934,37 @@ function LoyaltyRewardOverview() {
                                   >
                                     {verifyingOtp === transaction._id ? 'Verifying...' : 'Verify OTP'}
                                   </button>
+                                </div>
+                                <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                                  <a
+                                    href="#"
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      handleResendOtp(transaction._id)
+                                    }}
+                                    style={{
+                                      fontSize: '14px',
+                                      color: '#3B82F6',
+                                      textDecoration: 'none',
+                                      cursor: resendingOtp === transaction._id ? 'not-allowed' : 'pointer',
+                                      opacity: resendingOtp === transaction._id ? 0.6 : 1,
+                                      pointerEvents: resendingOtp === transaction._id ? 'none' : 'auto'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      if (resendingOtp !== transaction._id) {
+                                        e.target.style.textDecoration = 'underline'
+                                        e.target.style.color = '#2563EB'
+                                      }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      if (resendingOtp !== transaction._id) {
+                                        e.target.style.textDecoration = 'none'
+                                        e.target.style.color = '#3B82F6'
+                                      }
+                                    }}
+                                  >
+                                    {resendingOtp === transaction._id ? 'Resending...' : 'Resend OTP'}
+                                  </a>
                                 </div>
                               </div>
                             ) : (
@@ -874,6 +1129,19 @@ function LoyaltyRewardOverview() {
                               {otpErrors[transaction._id]}
                             </div>
                           )}
+                          {otpSuccess[transaction._id] && (
+                            <div className="otp-success-message" style={{
+                              padding: '12px 16px',
+                              backgroundColor: '#F0FDF4',
+                              border: '1px solid #BBF7D0',
+                              borderRadius: '8px',
+                              color: '#16A34A',
+                              fontSize: '14px',
+                              marginBottom: '16px'
+                            }}>
+                              {otpSuccess[transaction._id]}
+                            </div>
+                          )}
                           <div className="otp-input-container">
                             <input
                               type="text"
@@ -905,6 +1173,37 @@ function LoyaltyRewardOverview() {
                             >
                               {verifyingOtp === transaction._id ? 'Verifying...' : 'Verify OTP'}
                             </button>
+                          </div>
+                          <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                            <a
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handleResendOtp(transaction._id)
+                              }}
+                              style={{
+                                fontSize: '14px',
+                                color: '#3B82F6',
+                                textDecoration: 'none',
+                                cursor: resendingOtp === transaction._id ? 'not-allowed' : 'pointer',
+                                opacity: resendingOtp === transaction._id ? 0.6 : 1,
+                                pointerEvents: resendingOtp === transaction._id ? 'none' : 'auto'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (resendingOtp !== transaction._id) {
+                                  e.target.style.textDecoration = 'underline'
+                                  e.target.style.color = '#2563EB'
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (resendingOtp !== transaction._id) {
+                                  e.target.style.textDecoration = 'none'
+                                  e.target.style.color = '#3B82F6'
+                                }
+                              }}
+                            >
+                              {resendingOtp === transaction._id ? 'Resending...' : 'Resend OTP'}
+                            </a>
                           </div>
                         </div>
                       ) : (
@@ -1005,6 +1304,68 @@ function LoyaltyRewardOverview() {
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleTransactionCreated}
       />
+
+      {/* Executive TAT Modal */}
+      {isExecutiveTATModalOpen && selectedLocationForTAT && (
+        <div className="executive-tat-modal-overlay" onClick={() => setIsExecutiveTATModalOpen(false)}>
+          <div className="executive-tat-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="executive-tat-modal-header">
+              <div>
+                <h2 className="executive-tat-modal-title">Executive TAT - {selectedLocationForTAT.name}</h2>
+                <p className="executive-tat-modal-subtitle">Average Turn Around Time by Executive</p>
+              </div>
+              <button
+                className="executive-tat-modal-close"
+                onClick={() => setIsExecutiveTATModalOpen(false)}
+                aria-label="Close modal"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="executive-tat-modal-content">
+              {selectedLocationForTAT.executives && selectedLocationForTAT.executives.length > 0 ? (
+                <table className="executive-tat-table">
+                  <thead>
+                    <tr>
+                      <th>Executive</th>
+                      <th>Completed</th>
+                      <th>Average TAT</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedLocationForTAT.executives.map((executive, idx) => (
+                      <tr key={idx}>
+                        <td>
+                          <div className="executive-tat-table-cell">
+                            <div className="executive-tat-avatar">
+                              {executive.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="executive-tat-name">{executive.name}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="executive-tat-completed">{executive.completedCount}</span>
+                        </td>
+                        <td>
+                          {executive.avgTAT !== null ? (
+                            <span className="executive-tat-value">{executive.avgTAT.toFixed(1)} <span className="executive-tat-unit">hrs</span></span>
+                          ) : (
+                            <span className="executive-tat-na">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="executive-tat-empty">
+                  <p>No executives found for this location</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

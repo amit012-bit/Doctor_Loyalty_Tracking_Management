@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import './Login.css'
 import { loginUser } from '../services/User'
-import { Mail, Lock, LogIn, Shield, CheckCircle2, Package, Eye, EyeOff } from 'lucide-react'
+import { User, Lock, LogIn, Shield, CheckCircle2, Package, Eye, EyeOff } from 'lucide-react'
 
 function Login({ onLogin }) {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: ''
   })
   const [error, setError] = useState('')
@@ -27,7 +27,7 @@ function Login({ onLogin }) {
     setLoading(true)
 
     try {
-      const response = await loginUser(formData.email, formData.password)
+      const response = await loginUser(formData.username, formData.password)
 
       if (response.status === 200 && response.data.success) {
         localStorage.setItem('user', JSON.stringify(response.data.data.user))
@@ -109,20 +109,20 @@ function Login({ onLogin }) {
               )}
 
               <div className="form-group">
-                <label htmlFor="email" className="form-label">
-                  <Mail size={18} />
-                  Email Address
+                <label htmlFor="username" className="form-label">
+                  <User size={18} />
+                  Username
                 </label>
                 <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
+                  type="text"
+                  id="username"
+                  name="username"
+                  value={formData.username}
                   onChange={handleChange}
                   className="form-input"
-                  placeholder="Enter your email"
+                  placeholder="Enter your username"
                   required
-                  autoComplete="email"
+                  autoComplete="username"
                 />
               </div>
 

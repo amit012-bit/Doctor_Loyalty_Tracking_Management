@@ -1,6 +1,8 @@
 import Transaction from '../models/Transaction.js';
 import { sendOTPEmail, sendCompletionEmail } from '../services/emailService.js';
-import User from '../models/User.js';
+import Doctor from '../models/Doctor.js';
+import sendSMS from '../services/smsSevice.js';
+import { otpSmsTemplate, transactionSmsTemplate } from '../templates/smsTemplate.js';
 
 export const getTransactions = async (req, res, next) => {
   try {
@@ -27,8 +29,8 @@ export const getTransactions = async (req, res, next) => {
     }
 
     const transactions = await Transaction.find(filter)
-      .populate('doctorId', 'name email')
-      .populate('executiveId', 'name email')
+      .populate('doctorId', 'name mobileNumber clinicName locationId status')
+      .populate('executiveId', 'name phoneNumber locationId status')
       .populate('locationId', 'name address')
       .sort({ createdAt: -1 });
 
@@ -111,8 +113,8 @@ export const getTransactionById = async (req, res, next) => {
     const userId = req.user?._id;
 
     const transaction = await Transaction.findById(req.params.id)
-      .populate('doctorId', 'name email')
-      .populate('executiveId', 'name email')
+      .populate('doctorId', 'name mobileNumber clinicName locationId status')
+      .populate('executiveId', 'name phoneNumber locationId status')
       .populate('locationId', 'name address');
 
     if (!transaction) {
@@ -178,12 +180,7 @@ export const createTransaction = async (req, res, next) => {
       deliveryDate
     } = req.body;
 
-    // Set status based on whether executive is assigned
-    // If executive is assigned -> in_progress, if not -> pending
-    const finalStatus = status || (executiveId ? 'in_progress' : 'pending');
-
-    // Generate OTP if status is in_progress
-    const otp = finalStatus === 'in_progress' ? generateOTP() : null;
+    const otp =  generateOTP() 
 
     const transaction = await Transaction.create({
       doctorId,
@@ -192,59 +189,32 @@ export const createTransaction = async (req, res, next) => {
       amount,
       paymentMode,
       monthYear,
-      status: finalStatus,
+      status,
       deliveryDate: deliveryDate || null,
       otp: otp
     });
 
+    const doctorMobileNumber = await Doctor.findById(doctorId).select('mobileNumber');
+    console.log("doctorMobileNumber", doctorMobileNumber);
+    if (!doctorMobileNumber) {
+      return res.status(404).json({
+        success: false,
+        message: 'Doctor not found'
+      });
+    }
+
     const populatedTransaction = await Transaction.findById(transaction._id)
-      .populate('doctorId', 'name email')
-      .populate('executiveId', 'name email')
+      .populate('doctorId', 'name mobileNumber clinicName locationId status')
+      .populate('executiveId', 'name phoneNumber locationId status')
       .populate('locationId', 'name address');
 
     // Send OTP email to doctor if OTP was generated
-    if (otp && finalStatus === 'in_progress') {
+    if (otp) {
       try {
-        // Get doctor's email - use populated transaction or fetch from User model
-        let doctorEmail = null;
-        
-        // Check if doctorId is populated (object with email) or just an ObjectId
-        const doctorIdValue = populatedTransaction?.doctorId?._id || populatedTransaction?.doctorId || doctorId;
-        
-        if (populatedTransaction?.doctorId?.email) {
-          doctorEmail = populatedTransaction.doctorId.email;
-        } else if (doctorIdValue) {
-          // Fallback: fetch doctor details if not populated
-          const doctor = await User.findById(doctorIdValue).select('email');
-          doctorEmail = doctor?.email;
-        }
-
-        // For testing: Use test email if doctor email is not available or use the provided test email
-        // You can set a test email in environment variable or use the hardcoded one for testing
-        const testEmail = process.env.TEST_DOCTOR_EMAIL || 'sharktankindia1122@gmail.com';
-        
-        // Use doctor's email if available, otherwise use test email for testing
-        const emailToSend = doctorEmail || testEmail;
-
-        if (emailToSend) {
-          // Send OTP email to doctor
-          await sendOTPEmail(
-            emailToSend,
-            otp,
-            {
-              amount: amount,
-              paymentMode: paymentMode,
-              monthYear: monthYear
-            }
-          );
-          console.log(`📧 OTP email sent to doctor: ${emailToSend}`);
-        } else {
-          console.warn('⚠️  Doctor email not found. OTP email not sent.');
-        }
-      } catch (emailError) {
-        // Log email error but don't fail the transaction creation
-        console.error('❌ Error sending OTP email:', emailError.message);
-        // Continue with transaction creation even if email fails
+       const smsTemplate = transactionSmsTemplate(transaction, populatedTransaction.executiveId.name);
+       sendSMS(smsTemplate, doctorMobileNumber.mobileNumber);
+      } catch (error) {
+        console.error('❌ Error sending SMS:', error.message);
       }
     }
 
@@ -293,15 +263,6 @@ export const verifyOTP = async (req, res, next) => {
         });
       }
     }
-
-    // Check if transaction is in_progress
-    if (transaction.status !== 'in_progress') {
-      return res.status(400).json({
-        success: false,
-        message: 'OTP can only be verified for transactions in progress'
-      });
-    }
-
     // Check if OTP exists for this transaction
     if (!transaction.otp) {
       return res.status(400).json({
@@ -322,69 +283,24 @@ export const verifyOTP = async (req, res, next) => {
     // OTP is correct - ONLY NOW update status to completed
     // This ensures status is only changed when correct OTP is verified
     const deliveryDate = new Date();
+    
+    // Calculate TAT (Turn Around Time) in hours: from createdAt to current time
+    const createdAt = transaction.createdAt;
+    const timeDifference = deliveryDate.getTime() - createdAt.getTime();
+    const tatInHours = timeDifference / (1000 * 60 * 60); // Convert milliseconds to hours
+    
     const updatedTransaction = await Transaction.findByIdAndUpdate(
       transactionId,
       { 
         status: 'completed',
-        deliveryDate: deliveryDate // Set delivery date when OTP is verified
+        deliveryDate: deliveryDate, // Set delivery date when OTP is verified
+        tat: tatInHours // Store TAT in hours
       },
       { new: true, runValidators: true }
     )
-      .populate('doctorId', 'name email')
-      .populate('executiveId', 'name email')
+      .populate('doctorId', 'name mobileNumber clinicName locationId status')
+      .populate('executiveId', 'name phoneNumber locationId status')
       .populate('locationId', 'name address');
-
-    // Send completion emails to doctor and executive
-    try {
-      // Get doctor's email
-      let doctorEmail = null;
-      let doctorName = null;
-      
-      if (updatedTransaction?.doctorId?.email) {
-        doctorEmail = updatedTransaction.doctorId.email;
-        doctorName = updatedTransaction.doctorId.name;
-      } else {
-        // Fallback: fetch doctor details if not populated
-        const doctor = await User.findById(updatedTransaction.doctorId).select('name email');
-        doctorEmail = doctor?.email;
-        doctorName = doctor?.name;
-      }
-
-      // Get executive's email
-      let executiveEmail = null;
-      
-      if (updatedTransaction?.executiveId?.email) {
-        executiveEmail = updatedTransaction.executiveId.email;
-      } else if (updatedTransaction?.executiveId) {
-        // Fallback: fetch executive details if not populated
-        const executive = await User.findById(updatedTransaction.executiveId).select('email');
-        executiveEmail = executive?.email;
-      }
-
-      // Prepare transaction details for email
-      const transactionDetails = {
-        doctorName: doctorName,
-        amount: updatedTransaction.amount,
-        paymentMode: updatedTransaction.paymentMode,
-        monthYear: updatedTransaction.monthYear,
-        locationName: updatedTransaction.locationId?.name || updatedTransaction.locationId?.address,
-        deliveryDate: deliveryDate
-      };
-
-      // Send completion emails to both doctor and executive
-      if (doctorEmail || executiveEmail) {
-        await sendCompletionEmail(doctorEmail, executiveEmail, transactionDetails);
-        console.log('✅ Completion emails sent successfully');
-        if (doctorEmail) console.log('📧 Email sent to doctor:', doctorEmail);
-        if (executiveEmail) console.log('📧 Email sent to executive:', executiveEmail);
-      } else {
-        console.warn('⚠️  No email addresses found for doctor or executive. Completion emails not sent.');
-      }
-    } catch (emailError) {
-      // Log email error but don't fail the transaction completion
-      console.error('❌ Error sending completion emails:', emailError.message);
-      // Continue with successful transaction completion even if email fails
-    }
 
     res.json({
       success: true,
@@ -450,8 +366,8 @@ export const updateTransaction = async (req, res, next) => {
       updateData,
       { new: true, runValidators: true }
     )
-      .populate('doctorId', 'name email')
-      .populate('executiveId', 'name email')
+      .populate('doctorId', 'name mobileNumber clinicName locationId status')
+      .populate('executiveId', 'name phoneNumber locationId status')
       .populate('locationId', 'name address');
 
     if (!transaction) {
@@ -464,28 +380,24 @@ export const updateTransaction = async (req, res, next) => {
     // Send OTP email if a new OTP was generated (status changed to in_progress)
     if (newOtp && status === 'in_progress') {
       try {
-        // Get doctor's email from populated transaction or fetch from User model
+        // Get doctor's information - doctors don't have email, so we'll use test email
         let doctorEmail = null;
         
-        // Check if doctorId is populated (object with email) or just an ObjectId
+        // Check if doctorId is populated (object) or just an ObjectId
         const doctorIdValue = transaction.doctorId?._id || transaction.doctorId;
         
-        if (transaction?.doctorId?.email) {
-          doctorEmail = transaction.doctorId.email;
-        } else if (doctorIdValue) {
-          // Fallback: fetch doctor details if not populated
-          const doctor = await User.findById(doctorIdValue).select('email');
-          doctorEmail = doctor?.email;
+        if (doctorIdValue) {
+          // Fetch doctor details to get name for logging
+          const doctor = await Doctor.findById(doctorIdValue).select('name mobileNumber');
+          // Use test email since doctors don't have email in the model
+          doctorEmail = process.env.TEST_DOCTOR_EMAIL || 'sharktankindia1122@gmail.com';
+          console.log(`📧 Doctor: ${doctor?.name || 'Unknown'} (${doctor?.mobileNumber || 'N/A'}) - Using test email: ${doctorEmail}`);
         }
 
-        // Use doctor's email if available, otherwise use test email for testing
-        const testEmail = process.env.TEST_DOCTOR_EMAIL || 'sharktankindia1122@gmail.com';
-        const emailToSend = doctorEmail || testEmail;
-
-        if (emailToSend) {
-          // Send OTP email to doctor
+        if (doctorEmail) {
+          // Send OTP email to doctor (using test email since Doctor model doesn't have email)
           await sendOTPEmail(
-            emailToSend,
+            doctorEmail,
             newOtp,
             {
               amount: transaction.amount || amount,
@@ -493,9 +405,9 @@ export const updateTransaction = async (req, res, next) => {
               monthYear: transaction.monthYear || monthYear
             }
           );
-          console.log(`📧 OTP email sent to doctor: ${emailToSend}`);
+          console.log(`📧 OTP email sent to doctor: ${doctorEmail}`);
         } else {
-          console.warn('⚠️  Doctor email not found. OTP email not sent.');
+          console.warn('⚠️  Doctor not found. OTP email not sent.');
         }
       } catch (emailError) {
         // Log email error but don't fail the transaction update
@@ -514,9 +426,15 @@ export const updateTransaction = async (req, res, next) => {
   }
 };
 
-export const deleteTransaction = async (req, res, next) => {
+export const resendOTP = async (req, res, next) => {
   try {
-    const transaction = await Transaction.findByIdAndDelete(req.params.id);
+    const transactionId = req.params.id;
+    const userRole = req.user?.role;
+
+    // Find the transaction
+    const transaction = await Transaction.findById(transactionId)
+      .populate('doctorId', 'name mobileNumber clinicName locationId status')
+      .populate('executiveId', 'name phoneNumber locationId status');
 
     if (!transaction) {
       return res.status(404).json({
@@ -525,9 +443,48 @@ export const deleteTransaction = async (req, res, next) => {
       });
     }
 
+    // Check if transaction is in_progress
+    if (transaction.status !== 'in_progress') {
+      return res.status(400).json({
+        success: false,
+        message: 'OTP can only be resent for transactions in progress'
+      });
+    }
+
+    // Check if OTP exists
+    if (!transaction.otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'No OTP found for this transaction'
+      });
+    }
+
+    // Get doctor's mobile number
+    const doctorMobileNumber = transaction.doctorId?.mobileNumber;
+    if (!doctorMobileNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Doctor mobile number not found'
+      });
+    }
+
+    // Send OTP via SMS using the same OTP (not generating a new one)
+    try {
+      const executiveName = transaction.executiveId?.name || 'Executive';
+      const smsTemplate = transactionSmsTemplate(transaction, executiveName);
+      await sendSMS(smsTemplate, doctorMobileNumber);
+      console.log(`📱 OTP resent to doctor: ${doctorMobileNumber}`);
+    } catch (smsError) {
+      console.error('❌ Error sending SMS:', smsError.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send OTP. Please try again.'
+      });
+    }
+
     res.json({
       success: true,
-      message: 'Transaction deleted successfully'
+      message: 'OTP resent successfully to doctor'
     });
   } catch (error) {
     next(error);
@@ -581,8 +538,8 @@ export const createBulkTransactions = async (req, res, next) => {
         });
 
         const populatedTransaction = await Transaction.findById(transaction._id)
-          .populate('doctorId', 'name email')
-          .populate('executiveId', 'name email')
+          .populate('doctorId', 'name mobileNumber clinicName locationId status')
+          .populate('executiveId', 'name phoneNumber locationId status')
           .populate('locationId', 'name address');
 
         createdTransactions.push(populatedTransaction);

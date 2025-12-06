@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import './CreateTransactionModal.css'
 import { X, Plus, Upload, FileSpreadsheet } from 'lucide-react'
 import { createTransaction, createBulkTransactions } from '../services/Transaction'
-import { getUsers } from '../services/User'
+import { getDoctors } from '../services/Doctor'
+import { getExecutives } from '../services/Executive'
 import { getLocations } from '../services/Location'
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
@@ -34,15 +35,17 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
     if (isOpen) {
       const fetchData = async () => {
         try {
-          const [usersRes, locationsRes] = await Promise.all([
-            getUsers(),
+          const [doctorsRes, executivesRes, locationsRes] = await Promise.all([
+            getDoctors(),
+            getExecutives(),
             getLocations()
           ])
 
-          if (usersRes.data.success) {
-            const users = usersRes.data.data.users || []
-            setAllDoctors(users.filter(u => u.role === 'doctor'))
-            setAllExecutives(users.filter(u => u.role === 'executive'))
+          if (doctorsRes.data.success && executivesRes.data.success) {
+            const doctors = doctorsRes.data.data.doctors || []
+            setAllDoctors(doctors)
+            const executives = executivesRes.data.data.executives || []
+            setAllExecutives(executives)
             // Initially, no filtering (empty filtered lists)
             setFilteredDoctors([])
             setFilteredExecutives([])
@@ -96,10 +99,10 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
   useEffect(() => {
     if (formData.locationId) {
       const filteredDocs = allDoctors.filter(doctor => {
-        // Handle populated locationId (object with _id) or direct ObjectId (string)
+        // Handle single locationId - could be object with _id or direct ObjectId (string)
         if (!doctor.locationId) return false
-        const locationIdValue = typeof doctor.locationId === 'object' 
-          ? doctor.locationId._id?.toString() || doctor.locationId.toString()
+        const locationIdValue = typeof doctor.locationId === 'object' && doctor.locationId !== null
+          ? (doctor.locationId._id?.toString() || doctor.locationId.toString())
           : doctor.locationId.toString()
         return locationIdValue === formData.locationId
       })
@@ -107,8 +110,8 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
       const filteredExecs = allExecutives.filter(executive => {
         // Handle populated locationId (object with _id) or direct ObjectId (string)
         if (!executive.locationId) return false
-        const locationIdValue = typeof executive.locationId === 'object' 
-          ? executive.locationId._id?.toString() || executive.locationId.toString()
+        const locationIdValue = typeof executive.locationId === 'object' && executive.locationId !== null
+          ? (executive.locationId._id?.toString() || executive.locationId.toString())
           : executive.locationId.toString()
         return locationIdValue === formData.locationId
       })
@@ -562,6 +565,10 @@ function CreateTransactionModal({ isOpen, onClose, onSuccess }) {
                   min="0"
                   step="0.01"
                   required
+                  style={{
+                    MozAppearance: 'textfield',
+                    WebkitAppearance: 'none'
+                  }}
                 />
               </div>
 

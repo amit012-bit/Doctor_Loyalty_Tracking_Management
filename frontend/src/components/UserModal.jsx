@@ -1,109 +1,121 @@
 import { useState, useEffect } from 'react'
 import './CreateTransactionModal.css'
-import { X, Eye, EyeOff } from 'lucide-react'
-import { createUser, updateUserById, getUserById } from '../services/User'
+import { X } from 'lucide-react'
+import { getDoctorById, createDoctor, updateDoctor } from '../services/Doctor'
+import { getExecutiveById, createExecutive, updateExecutive } from '../services/Executive'
 import { getLocations } from '../services/Location'
 
-function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }) {
+function UserModal({ isOpen, onClose, onSuccess, personId, userRole: defaultRole }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [locations, setLocations] = useState([])
-  const [showPassword, setShowPassword] = useState(false)
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phoneNumber: '', // This will store only the 10 digits (without +91)
-    password: '',
-    role: defaultRole || 'doctor',
-    locationId: ''
-  })
   const [isEditMode, setIsEditMode] = useState(false)
-
-  // Fetch locations
-  useEffect(() => {
-    if (isOpen) {
-      const fetchLocations = async () => {
-        try {
-          const locationsRes = await getLocations()
-          if (locationsRes.data.success) {
-            setLocations(locationsRes.data.data.locations || [])
-            if (locationsRes.data.data.locations.length > 0 && !formData.locationId) {
-              setFormData(prev => ({ ...prev, locationId: locationsRes.data.data.locations[0]._id }))
-            }
-          }
-        } catch (err) {
-          console.error('Error fetching locations:', err)
-        }
+  const [locations, setLocations] = useState([])
+  const isDoctor = defaultRole === 'doctor'
+  const isExecutive = defaultRole === 'executive'
+  
+  // Initialize form data based on role
+  const getInitialFormData = () => {
+    if (isDoctor) {
+      return {
+        name: '',
+        mobileNumber: '',
+        clinicName: '',
+        locationId: '',
+        status: 'active'
       }
+    } else if (isExecutive) {
+      return {
+        name: '',
+        phoneNumber: '',
+        locationId: '',
+        status: 'active'
+      }
+    }
+    return {}
+  }
 
+  const [formData, setFormData] = useState(getInitialFormData())
+
+  // Fetch locations on mount
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await getLocations()
+        if (response.data.success) {
+          setLocations(response.data.data.locations || [])
+        }
+      } catch (err) {
+        console.error('Error fetching locations:', err)
+      }
+    }
+    if (isOpen) {
       fetchLocations()
     }
   }, [isOpen])
 
-  // Fetch user data if editing
+  // Fetch data if editing
   useEffect(() => {
-    if (isOpen && userId) {
+    if (isOpen && personId) {
       setIsEditMode(true)
-      const fetchUser = async () => {
+      const fetchData = async () => {
         try {
-          const response = await getUserById(userId)
-          if (response.data.success) {
-            const user = response.data.data.user
-            // Extract 10 digits from phone number (remove +91- prefix for display)
-            const phoneDisplay = user.phoneNumber ? user.phoneNumber.replace(/^\+91-?/, '').substring(0, 10) : ''
-            setFormData({
-              name: user.name || '',
-              email: user.email || '',
-              phoneNumber: phoneDisplay,
-              password: '', // Don't pre-fill password
-              role: user.role || defaultRole || 'doctor',
-              locationId: user.locationId?._id || user.locationId || ''
-            })
+          let response
+          if (isDoctor) {
+            response = await getDoctorById(personId)
+            if (response.data.success) {
+              const doctor = response.data.data.doctor
+              const phoneDisplay = doctor.mobileNumber ? doctor.mobileNumber.replace(/^\+91-?/, '').substring(0, 10) : ''
+              const locationId = doctor.locationId?._id || doctor.locationId || ''
+              
+              setFormData({
+                name: doctor.name || '',
+                mobileNumber: phoneDisplay,
+                clinicName: doctor.clinicName || '',
+                locationId: locationId,
+                status: doctor.status || 'active'
+              })
+            }
+          } else if (isExecutive) {
+            response = await getExecutiveById(personId)
+            if (response.data.success) {
+              const executive = response.data.data.executive
+              const phoneDisplay = executive.phoneNumber ? executive.phoneNumber.replace(/^\+91-?/, '').substring(0, 10) : ''
+              
+              setFormData({
+                name: executive.name || '',
+                phoneNumber: phoneDisplay,
+                locationId: executive.locationId?._id || executive.locationId || '',
+                status: executive.status || 'active'
+              })
+            }
           }
         } catch (err) {
-          console.error('Error fetching user:', err)
-          setError('Failed to load user data')
+          console.error('Error fetching data:', err)
+          setError(`Failed to load ${isDoctor ? 'doctor' : 'executive'} data`)
         }
       }
-      fetchUser()
-    } else if (isOpen && !userId) {
+      fetchData()
+    } else if (isOpen && !personId) {
       setIsEditMode(false)
-      setFormData({
-        name: '',
-        email: '',
-        phoneNumber: '',
-        password: '',
-        role: defaultRole || 'doctor',
-        locationId: ''
-      })
+      setFormData(getInitialFormData())
     }
-  }, [isOpen, userId, defaultRole])
+  }, [isOpen, personId, isDoctor, isExecutive])
 
   // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
-      setFormData({
-        name: '',
-        email: '',
-        phoneNumber: '',
-        password: '',
-        role: defaultRole || 'doctor',
-        locationId: ''
-      })
+      setFormData(getInitialFormData())
       setError('')
       setIsEditMode(false)
-      setShowPassword(false)
     }
-  }, [isOpen, defaultRole])
+  }, [isOpen, isDoctor, isExecutive])
 
   const handleChange = (e) => {
     const { name, value } = e.target
     
-    // Special handling for phone number - only allow 10 digits
-    if (name === 'phoneNumber') {
-      // Remove all non-digit characters and limit to 10 digits
+    // Special handling for phone numbers - only allow 10 digits
+    if (name === 'mobileNumber' || name === 'phoneNumber') {
       const digitsOnly = value.replace(/\D/g, '').substring(0, 10)
-      
       setFormData(prev => ({
         ...prev,
         [name]: digitsOnly
@@ -117,6 +129,15 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
     if (error) setError('')
   }
 
+  const handleLocationChange = (e) => {
+    const { value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      locationId: value
+    }))
+    if (error) setError('')
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
@@ -124,14 +145,23 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
 
     try {
       // Validate required fields
-      if (!formData.name || !formData.email || !formData.phoneNumber || !formData.locationId) {
-        setError('Please fill in all required fields')
-        setLoading(false)
-        return
+      if (isDoctor) {
+        if (!formData.name || !formData.mobileNumber || !formData.clinicName || !formData.locationId) {
+          setError('Please fill in all required fields')
+          setLoading(false)
+          return
+        }
+      } else if (isExecutive) {
+        if (!formData.name || !formData.phoneNumber || !formData.locationId) {
+          setError('Please fill in all required fields')
+          setLoading(false)
+          return
+        }
       }
       
-      // Validate phone number: ensure we have 10 digits (with or without +91 prefix)
-      const phoneDigits = formData.phoneNumber.replace(/\D/g, '')
+      // Validate phone number: ensure we have 10 digits
+      const phoneField = isDoctor ? 'mobileNumber' : 'phoneNumber'
+      const phoneDigits = formData[phoneField].replace(/\D/g, '')
       if (phoneDigits.length !== 10) {
         setError('Please enter exactly 10 digits for the phone number')
         setLoading(false)
@@ -145,53 +175,44 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
         return
       }
 
-      // Password is required only for new users
-      if (!isEditMode && !formData.password) {
-        setError('Password is required for new users')
-        setLoading(false)
-        return
-      }
-
-      // Password validation: min 6 chars for new users, or if provided in edit mode
-      if (formData.password && formData.password.length < 6) {
-        setError('Password must be at least 6 characters long')
-        setLoading(false)
-        return
-      }
-
       // Format phone number as +91XXXXXXXXXX (backend will normalize to +91-XXXXXXXXXX)
-      const phoneNumber = `+91${formData.phoneNumber}`
+      const phoneNumber = `+91${phoneDigits}`
 
       let response
-      if (isEditMode) {
-        // Update existing user (don't send password if empty)
-        const updateData = {
+      if (isDoctor) {
+        const doctorData = {
           name: formData.name,
-          email: formData.email,
+          mobileNumber: phoneNumber,
+          clinicName: formData.clinicName,
+          locationId: formData.locationId,
+          status: formData.status
+        }
+        if (isEditMode) {
+          response = await updateDoctor(personId, doctorData)
+        } else {
+          response = await createDoctor(doctorData)
+        }
+      } else if (isExecutive) {
+        const executiveData = {
+          name: formData.name,
           phoneNumber: phoneNumber,
-          role: formData.role,
-          locationId: formData.locationId
+          locationId: formData.locationId,
+          status: formData.status
         }
-        // Only include password if it's provided
-        if (formData.password) {
-          updateData.password = formData.password
+        if (isEditMode) {
+          response = await updateExecutive(personId, executiveData)
+        } else {
+          response = await createExecutive(executiveData)
         }
-        response = await updateUserById(userId, updateData)
-      } else {
-        // Create new user
-        const createData = {
-          ...formData,
-          phoneNumber: phoneNumber
-        }
-        response = await createUser(createData)
       }
 
-      if (response.data.success) {
+      if (response?.data.success) {
         onSuccess()
         onClose()
       }
     } catch (err) {
-      setError(err.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} user. Please try again.`)
+      const entityName = isDoctor ? 'doctor' : 'executive'
+      setError(err.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} ${entityName}. Please try again.`)
     } finally {
       setLoading(false)
     }
@@ -199,11 +220,15 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
 
   if (!isOpen) return null
 
+  const title = isDoctor 
+    ? (isEditMode ? 'Edit Doctor' : 'Add New Doctor')
+    : (isEditMode ? 'Edit Executive' : 'Add New Executive')
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">{isEditMode ? 'Edit User' : 'Add New User'}</h2>
+          <h2 className="modal-title">{title}</h2>
           <button className="modal-close-btn" onClick={onClose}>
             <X size={20} />
           </button>
@@ -229,29 +254,14 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
                 onChange={handleChange}
                 className="form-input"
                 required
-                placeholder="Enter full name"
+                placeholder={`Enter ${isDoctor ? 'doctor' : 'executive'} name`}
+                maxLength={100}
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="email" className="form-label">
-                Email *
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="form-input"
-                required
-                placeholder="Enter email address"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="phoneNumber" className="form-label">
-                Phone Number *
+              <label htmlFor={isDoctor ? 'mobileNumber' : 'phoneNumber'} className="form-label">
+                {isDoctor ? 'Mobile' : 'Phone'} Number *
               </label>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <span style={{ 
@@ -266,9 +276,9 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
                 </span>
                 <input
                   type="tel"
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  value={formData.phoneNumber}
+                  id={isDoctor ? 'mobileNumber' : 'phoneNumber'}
+                  name={isDoctor ? 'mobileNumber' : 'phoneNumber'}
+                  value={formData[isDoctor ? 'mobileNumber' : 'phoneNumber'] || ''}
                   onChange={handleChange}
                   className="form-input"
                   required
@@ -283,55 +293,24 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
               </small>
             </div>
 
-            {defaultRole === 'executive' && (<div className="form-group">
-              <label htmlFor="password" className="form-label">
-                Password {!isEditMode && '*'}
-              </label>
-              <div className="password-input-wrapper">
+            {isDoctor && (
+              <div className="form-group full-width">
+                <label htmlFor="clinicName" className="form-label">
+                  Clinic Name *
+                </label>
                 <input
-                  type={showPassword ? "text" : "password"}
-                  id="password"
-                  name="password"
-                  value={formData.password}
+                  type="text"
+                  id="clinicName"
+                  name="clinicName"
+                  value={formData.clinicName || ''}
                   onChange={handleChange}
                   className="form-input"
-                  required={!isEditMode}
-                  minLength={isEditMode ? 0 : 6}
-                  placeholder={isEditMode ? "Enter new password (optional)" : "Enter password (min 6 characters)"}
+                  required
+                  placeholder="Enter clinic name"
+                  maxLength={200}
                 />
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
               </div>
-              {isEditMode && (
-                <small className="form-hint">(leave blank to keep current)</small>
-              )}
-            </div>)}
-
-            <div className="form-group">
-              <label htmlFor="role" className="form-label">
-                Role *
-              </label>
-              <select
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                className="form-input"
-                required
-              >
-                <option value="doctor">Doctor</option>
-                <option value="executive">Executive</option>
-                <option value="admin">Admin</option>
-                <option value="superadmin">Super Admin</option>
-                <option value="accountant">Accountant</option>
-              </select>
-            </div>
+            )}
 
             <div className="form-group full-width">
               <label htmlFor="locationId" className="form-label">
@@ -340,8 +319,8 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
               <select
                 id="locationId"
                 name="locationId"
-                value={formData.locationId}
-                onChange={handleChange}
+                value={formData.locationId || ''}
+                onChange={handleLocationChange}
                 className="form-input"
                 required
               >
@@ -353,6 +332,23 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
                 ))}
               </select>
             </div>
+
+            <div className="form-group">
+              <label htmlFor="status" className="form-label">
+                Status *
+              </label>
+              <select
+                id="status"
+                name="status"
+                value={formData.status || 'active'}
+                onChange={handleChange}
+                className="form-input"
+                required
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
           </div>
 
           <div className="modal-actions">
@@ -360,7 +356,7 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
               Cancel
             </button>
             <button type="submit" className="btn-submit" disabled={loading}>
-              {loading ? 'Saving...' : (isEditMode ? 'Update User' : 'Create User')}
+              {loading ? 'Saving...' : (isEditMode ? `Update ${isDoctor ? 'Doctor' : 'Executive'}` : `Create ${isDoctor ? 'Doctor' : 'Executive'}`)}
             </button>
           </div>
         </form>
@@ -370,4 +366,3 @@ function UserModal({ isOpen, onClose, onSuccess, userId, userRole: defaultRole }
 }
 
 export default UserModal
-

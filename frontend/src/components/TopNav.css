@@ -98,7 +98,7 @@
 .top-nav-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
 .user-avatar {
@@ -124,5 +124,73 @@
 .avatar-initials {
   font-size: 14px;
   font-weight: 600;
+}
+
+.platform-toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.platform-toggle-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.platform-toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 28px;
+  cursor: pointer;
+}
+
+.platform-toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.platform-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #9CA3AF;
+  transition: 0.3s;
+  border-radius: 28px;
+}
+
+.platform-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.platform-toggle-switch input:checked + .platform-toggle-slider {
+  background-color: #3B82F6;
+}
+
+.platform-toggle-switch input:checked + .platform-toggle-slider:before {
+  transform: translateX(22px);
+}
+
+.platform-toggle-switch input:disabled + .platform-toggle-slider {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.platform-toggle-switch:hover input:not(:disabled) + .platform-toggle-slider {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 

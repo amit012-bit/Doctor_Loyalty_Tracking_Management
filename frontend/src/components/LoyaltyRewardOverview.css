@@ -56,6 +56,198 @@
   color: white;
 }
 
+/* Location Cards */
+.location-cards-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.location-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid var(--border-color);
+}
+
+.location-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.location-card-header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.location-card-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.location-card-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.location-stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.location-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.location-stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.location-stat-value.completed {
+  color: #14B8A6;
+}
+
+.location-stat-value.in-progress {
+  color: #3B82F6;
+}
+
+/* View Executive TAT Link */
+.view-executive-tat-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+  color: #3B82F6;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.view-executive-tat-link:hover {
+  color: #2563EB;
+  text-decoration: underline;
+}
+
+.view-executive-tat-link:active {
+  color: #1D4ED8;
+}
+
+/* Location Executives Section */
+.location-executives {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.location-executives-header {
+  margin-bottom: 8px;
+}
+
+.location-executives-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.location-executives-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.location-executives-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.location-executives-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.location-executives-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
+}
+
+.location-executives-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+.location-executive-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--bg-primary);
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.location-executive-item:hover {
+  background: #F3F4F6;
+}
+
+.executive-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.executive-tat {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-weight: 700;
+}
+
+.tat-value {
+  font-size: 13px;
+  color: #3B82F6;
+  letter-spacing: -0.3px;
+}
+
+.tat-unit {
+  font-size: 9px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tat-na {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
 /* Location Tabs */
 .location-tabs-container {
   display: flex;
@@ -438,11 +630,8 @@
   background-color: var(--bg-primary) !important;
   z-index: 10;
   position: relative;
-  transform: scale(1.02);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   border-left: 4px solid var(--primary-teal);
-  border-radius: 0 0 8px 8px;
-  margin-bottom: 4px;
   transition: all 0.3s ease;
   animation: expandRow 0.3s ease-out;
 }
@@ -450,11 +639,11 @@
 @keyframes expandRow {
   from {
     opacity: 0;
-    transform: scale(0.98) translateY(-10px);
+    transform: translateY(-10px);
   }
   to {
     opacity: 1;
-    transform: scale(1.02) translateY(0);
+    transform: translateY(0);
   }
 }
 
@@ -858,6 +1047,10 @@
     grid-template-columns: 1fr;
   }
 
+  .location-cards-row {
+    grid-template-columns: 1fr;
+  }
+
   .greeting-banner {
     flex-direction: column;
     text-align: center;
@@ -974,5 +1167,213 @@
 
   .pagination-info {
     text-align: center;
+  }
+}
+
+/* Executive TAT Modal */
+.executive-tat-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.executive-tat-modal {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.executive-tat-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.executive-tat-modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+  letter-spacing: -0.3px;
+}
+
+.executive-tat-modal-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.executive-tat-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  margin-left: 16px;
+}
+
+.executive-tat-modal-close:hover {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.executive-tat-modal-content {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.executive-tat-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.executive-tat-table thead {
+  background: var(--bg-primary);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.executive-tat-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.executive-tat-table tbody tr {
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.2s;
+}
+
+.executive-tat-table tbody tr:hover {
+  background: var(--bg-primary);
+}
+
+.executive-tat-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.executive-tat-table td {
+  padding: 16px;
+  font-size: 14px;
+}
+
+.executive-tat-table-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.executive-tat-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.executive-tat-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.executive-tat-completed {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.executive-tat-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #3B82F6;
+  letter-spacing: -0.3px;
+}
+
+.executive-tat-unit {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-left: 2px;
+}
+
+.executive-tat-na {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.executive-tat-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-secondary);
+}
+
+.executive-tat-empty p {
+  margin: 0;
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .executive-tat-modal {
+    max-width: 100%;
+    max-height: 90vh;
+    margin: 10px;
+  }
+
+  .executive-tat-modal-header {
+    padding: 16px;
+  }
+
+  .executive-tat-modal-content {
+    padding: 16px;
+  }
+
+  .executive-tat-table th,
+  .executive-tat-table td {
+    padding: 12px;
+    font-size: 13px;
+  }
+
+  .executive-tat-table-cell {
+    gap: 8px;
+  }
+
+  .executive-tat-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
   }
 }
