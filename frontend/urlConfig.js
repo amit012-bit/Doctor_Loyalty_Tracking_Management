@@ -10,4 +10,7 @@ export const ENDPOINT_URL = {
     TRANSACTIONS: `${API_URL}/transactions`,
     TRANSACTIONS_STATISTICS: `${API_URL}/transactions/statistics`,
     LOCATIONS: `${API_URL}/locations`,    
+    DOCTORS: `${API_URL}/doctors`,
+    EXECUTIVES: `${API_URL}/executives`,
+    PLATFORM_SETTINGS: `${API_URL}/platform-settings`,
 }

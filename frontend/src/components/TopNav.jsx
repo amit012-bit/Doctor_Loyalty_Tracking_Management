@@ -1,9 +1,49 @@
+import { useState, useEffect } from 'react'
 import './TopNav.css'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Power } from 'lucide-react'
+import { getPlatformSettings, updatePlatformSettings } from '../services/PlatformSettings'
 
 function TopNav({ user, onMenuClick, isSidebarOpen }) {
   const userName = user?.name || 'User'
   const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  const [platformEnabled, setPlatformEnabled] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const canTogglePlatform = user?.role === 'admin' || user?.role === 'superadmin'
+
+  useEffect(() => {
+    if (canTogglePlatform) {
+      fetchPlatformSettings()
+    }
+  }, [canTogglePlatform])
+
+  const fetchPlatformSettings = async () => {
+    try {
+      const response = await getPlatformSettings()
+      if (response.data.success) {
+        setPlatformEnabled(response.data.data.settings.isEnabled)
+      }
+    } catch (err) {
+      console.error('Error fetching platform settings:', err)
+    }
+  }
+
+  const handleTogglePlatform = async () => {
+    if (!canTogglePlatform) return
+    
+    setLoading(true)
+    try {
+      const newStatus = !platformEnabled
+      const response = await updatePlatformSettings(newStatus)
+      if (response.data.success) {
+        setPlatformEnabled(newStatus)
+      }
+    } catch (err) {
+      console.error('Error updating platform settings:', err)
+      alert(err.response?.data?.message || 'Failed to update platform status')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <nav className="top-nav">
@@ -18,6 +58,20 @@ function TopNav({ user, onMenuClick, isSidebarOpen }) {
       </div>
 
       <div className="top-nav-right">
+        {canTogglePlatform && (
+          <div className="platform-toggle-container">
+            <span className="platform-toggle-label">Platform available</span>
+            <label className="platform-toggle-switch" title={platformEnabled ? 'Platform is enabled - Click to disable' : 'Platform is disabled - Click to enable'}>
+              <input
+                type="checkbox"
+                checked={platformEnabled}
+                onChange={handleTogglePlatform}
+                disabled={loading}
+              />
+              <span className="platform-toggle-slider"></span>
+            </label>
+          </div>
+        )}
         <div className="user-avatar" title={userName}>
           {user?.name ? (
             <div className="avatar-initials">{userInitials}</div>

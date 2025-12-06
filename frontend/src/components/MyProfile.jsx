@@ -1,34 +1,74 @@
 import { useState, useEffect } from 'react'
 import './MyProfile.css'
-import { updateCurrentUser } from '../services/User'
+import { updateCurrentUser, getCurrentUser } from '../services/User'
+import { updateExecutive, getExecutiveById } from '../services/Executive'
 import { getLocations } from '../services/Location'
-import { User, Camera, Trash2 } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 
 function MyProfile({ currentUser }) {
+  const isExecutive = currentUser?.role === 'executive'
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [locations, setLocations] = useState([])
-  const [profileImage, setProfileImage] = useState(null)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    location: '',
+    username: '',
+    phoneNumber: '',
+    locationId: '',
     profession: '',
-    bio: ''
+    newPassword: '',
+    confirmPassword: ''
   })
 
   useEffect(() => {
-    // Initialize form with user data
-    if (currentUser) {
-      const nameParts = (currentUser.name || '').split(' ')
-      setFormData({
-        firstName: nameParts[0] || '',
-        lastName: nameParts.slice(1).join(' ') || '',
-        email: currentUser.email || '',
-        profession: currentUser.role ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1) : '',
-      })
+    // Fetch current user data with password
+    const fetchUserData = async () => {
+      try {
+        let response
+        if (isExecutive) {
+          response = await getExecutiveById(currentUser._id)
+        } else {
+          response = await getCurrentUser()
+        }
+        if (response.data.success) {
+          const userData = response.data.data.user || response.data.data.executive
+          const nameParts = (userData.name || '').split(' ')
+          setFormData({
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+            username: userData.username || '',
+            phoneNumber: userData.phoneNumber || '',
+            locationId: userData.locationId?._id || userData.locationId || '',
+            profession: userData.role ? userData.role.charAt(0).toUpperCase() + userData.role.slice(1) : '',
+            newPassword: '',
+            confirmPassword: ''
+          })
+          setCurrentPassword(userData.password || '')
+        }
+      } catch (err) {
+        console.error('Error fetching user data:', err)
+        // Fallback to currentUser from props
+        if (currentUser) {
+          const nameParts = (currentUser.name || '').split(' ')
+          setFormData({
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+            username: currentUser.username || '',
+            phoneNumber: currentUser.phoneNumber || '',
+            locationId: currentUser.locationId?._id || currentUser.locationId || '',
+            profession: currentUser.role ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1) : '',
+            newPassword: '',
+            confirmPassword: ''
+          })
+        }
+      }
     }
+
+    fetchUserData()
 
     // Fetch locations
     const fetchLocations = async () => {
@@ -54,29 +94,6 @@ function MyProfile({ currentUser }) {
     if (success) setSuccess('')
   }
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        setError('Image size should be less than 5MB')
-        return
-      }
-      if (!file.type.startsWith('image/')) {
-        setError('Please select a valid image file')
-        return
-      }
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setProfileImage(reader.result)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleDeleteImage = () => {
-    setProfileImage(null)
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
@@ -84,21 +101,58 @@ function MyProfile({ currentUser }) {
     setLoading(true)
 
     try {
+      // Validate password if new password is provided
+      if (formData.newPassword) {
+        if (formData.newPassword.length < 6) {
+          setError('New password must be at least 6 characters long')
+          setLoading(false)
+          return
+        }
+        if (formData.newPassword !== formData.confirmPassword) {
+          setError('New password and confirm password do not match')
+          setLoading(false)
+          return
+        }
+      } else if (formData.confirmPassword) {
+        // If only confirm password is filled, show error
+        setError('Please enter a new password')
+        setLoading(false)
+        return
+      }
+
       // Combine firstName and lastName
       const fullName = `${formData.firstName} ${formData.lastName}`.trim()
       
       const updateData = {
         name: fullName,
-        email: formData.email
+        username: formData.username,
+        phoneNumber: formData.phoneNumber,
+        locationId: formData.locationId
       }
 
-      const response = await updateCurrentUser(updateData)
+      // Only include password if new password is provided
+      if (formData.newPassword) {
+        updateData.password = formData.newPassword
+      }
+
+      let response
+      if (isExecutive) {
+        response = await updateExecutive(currentUser._id, updateData)
+      } else {
+        response = await updateCurrentUser(updateData)
+      }
       
       if (response.status === 200 && response.data.success) {
         setSuccess('Profile updated successfully!')
         // Update localStorage with new user data
-        const updatedUser = { ...currentUser, ...response.data.data.user }
+        const updatedUser = { ...currentUser, ...response.data.data.user || response.data.data.executive }
         localStorage.setItem('user', JSON.stringify(updatedUser))
+        // Clear password fields
+        setFormData(prev => ({
+          ...prev,
+          newPassword: '',
+          confirmPassword: ''
+        }))
         // Reload to reflect changes
         setTimeout(() => {
           window.location.reload()
@@ -138,13 +192,9 @@ function MyProfile({ currentUser }) {
         {/* Profile Picture Section */}
         <div className="profile-picture-section">
           <div className="profile-picture-wrapper">
-            {profileImage ? (
-              <img src={profileImage} alt="Profile" className="profile-picture" />
-            ) : (
               <div className="profile-picture-placeholder">
                 <span className="profile-initials">{getUserInitials()}</span>
               </div>
-            )}
           </div>
         </div>
 
@@ -199,18 +249,54 @@ function MyProfile({ currentUser }) {
             </div>
 
             <div className="form-group">
-              <label htmlFor="email" className="form-label">
-                Email
+              <label htmlFor="username" className="form-label">
+                Username
               </label>
               <input
                 type="text"
-                id="email"
-                name="email"
-                value={formData.email}
+                id="username"
+                name="username"
+                value={formData.username}
                 onChange={handleChange}
                 className="form-input"
-                placeholder="Enter email"
+                placeholder="Enter username"
               />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="phoneNumber" className="form-label">
+                Phone Number
+              </label>
+              <input
+                type="text"
+                id="phoneNumber"
+                name="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter phone number (e.g., +91 9876543210)"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="locationId" className="form-label">
+                Location
+              </label>
+              <select
+                id="locationId"
+                name="locationId"
+                value={formData.locationId}
+                onChange={handleChange}
+                className="form-input"
+                disabled={isExecutive}
+              >
+                <option value="">Select a location</option>
+                {locations.map((location) => (
+                  <option key={location._id} value={location._id}>
+                    {location.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="form-group">
@@ -226,6 +312,60 @@ function MyProfile({ currentUser }) {
                 className="form-input"
                 placeholder="Enter profession"
                 readOnly
+              />
+            </div>
+
+            {/* <div className="form-group full-width">
+              <label htmlFor="currentPassword" className="form-label">
+                Current Password
+              </label>
+              <div className="password-input-wrapper">
+                <input
+                  type={showCurrentPassword ? "text" : "password"}
+                  id="currentPassword"
+                  name="currentPassword"
+                  value={currentPassword}
+                  className="form-input"
+                  placeholder="Current password"
+                  readOnly
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                >
+                  {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div> */}
+
+            <div className="form-group">
+              <label htmlFor="newPassword" className="form-label">
+                New Password
+              </label>
+              <input
+                type="password"
+                id="newPassword"
+                name="newPassword"
+                value={formData.newPassword}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter new password (optional)"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="confirmPassword" className="form-label">
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Confirm new password"
               />
             </div>
           </div>

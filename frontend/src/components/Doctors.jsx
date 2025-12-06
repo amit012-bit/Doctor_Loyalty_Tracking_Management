@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react'
 import './LoyaltyRewardOverview.css'
-import { getUsers } from '../services/User'
-import { getLocations } from '../services/Location'
+import './CreateTransactionModal.css'
+import { getDoctors, deleteDoctor } from '../services/Doctor'
 import UserModal from './UserModal'
-import { Plus, Edit2 } from 'lucide-react'
+import { Plus, Edit2, Trash2, X, AlertTriangle } from 'lucide-react'
 
 function Doctors() {
   const [user, setUser] = useState(null)
   const [doctors, setDoctors] = useState([])
-  const [locations, setLocations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingUserId, setEditingUserId] = useState(null)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [editingDoctorId, setEditingDoctorId] = useState(null)
+  const [deletingDoctor, setDeletingDoctor] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const itemsPerPage = 5
 
   useEffect(() => {
@@ -33,18 +35,13 @@ function Doctors() {
       setLoading(true)
       setError('')
 
-      const [usersRes, locationsRes] = await Promise.all([
-        getUsers(),
-        getLocations()
+      const [doctorsRes] = await Promise.all([
+        getDoctors()
       ])
 
-      if (usersRes.data.success) {
-        const users = usersRes.data.data.users || []
-        setDoctors(users.filter(u => u.role === 'doctor'))
-      }
-
-      if (locationsRes.data.success) {
-        setLocations(locationsRes.data.data.locations || [])
+      if (doctorsRes.data.success) {
+        const doctors = doctorsRes.data.data.doctors || []
+        setDoctors(doctors)
       }
     } catch (err) {
       console.error('Error fetching data:', err)
@@ -58,37 +55,66 @@ function Doctors() {
     fetchData()
   }, [])
 
-  const handleUserCreated = () => {
+  const handleDoctorCreated = () => {
     fetchData()
   }
 
-  const handleEdit = (userId) => {
-    setEditingUserId(userId)
+  const handleEdit = (doctorId) => {
+    setEditingDoctorId(doctorId)
     setIsModalOpen(true)
   }
 
   const handleAddNew = () => {
-    setEditingUserId(null)
+    setEditingDoctorId(null)
     setIsModalOpen(true)
   }
 
   const handleModalClose = () => {
     setIsModalOpen(false)
-    setEditingUserId(null)
+    setEditingDoctorId(null)
+  }
+
+  const handleDeleteClick = (doctor) => {
+    setDeletingDoctor(doctor)
+    setIsDeleteModalOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingDoctor) return
+    
+    try {
+      setDeleting(true)
+      setError('')
+      await deleteDoctor(deletingDoctor._id)
+      setIsDeleteModalOpen(false)
+      setDeletingDoctor(null)
+      fetchData()
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete doctor. Please try again.')
+      console.error('Delete doctor error:', err)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleDeleteCancel = () => {
+    setIsDeleteModalOpen(false)
+    setDeletingDoctor(null)
   }
 
   const filteredDoctors = doctors.filter(doctor => {
     if (!searchQuery) return true
     
     const name = doctor.name || ''
-    const email = doctor.email || ''
-    const phoneNumber = doctor.phoneNumber || ''
+    const mobileNumber = doctor.mobileNumber || ''
+    const clinicName = doctor.clinicName || ''
+    // Handle single locationId - could be object with name or direct ObjectId
     const locationName = doctor.locationId?.name || ''
     const searchLower = searchQuery.toLowerCase()
     
     return name.toLowerCase().includes(searchLower) || 
-           email.toLowerCase().includes(searchLower) ||
-           phoneNumber.toLowerCase().includes(searchLower) ||
+           mobileNumber.toLowerCase().includes(searchLower) ||
+           clinicName.toLowerCase().includes(searchLower) ||
            locationName.toLowerCase().includes(searchLower)
   })
 
@@ -156,7 +182,7 @@ function Doctors() {
               </svg>
               <input
                 type="text"
-                placeholder="Search by name, phone, or location..."
+                placeholder="Search by name, phone, clinic, or location..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value)
@@ -178,17 +204,17 @@ function Doctors() {
             <thead>
               <tr>
                 <th>Name</th>
-                {/* <th>Email</th> */}
-                <th>Phone Number</th>
-                <th>Location</th>
-                <th>Created At</th>
+                <th>Mobile Number</th>
+                <th>Clinic Name</th>
+                <th>Locations</th>
+                <th>Status</th>
                 {isAdmin && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
               {filteredDoctors.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 5 : 4} style={{ textAlign: 'center', padding: '2rem' }}>
+                  <td colSpan={isAdmin ? 7 : 6} style={{ textAlign: 'center', padding: '2rem' }}>
                     {loading ? 'Loading...' : 'No doctors found'}
                   </td>
                 </tr>
@@ -196,35 +222,155 @@ function Doctors() {
                 paginatedDoctors.map((doctor) => (
                   <tr key={doctor._id}>
                     <td>{doctor.name || 'N/A'}</td>
-                    {/* <td>{doctor.email || 'N/A'}</td> */}
-                    <td>{doctor.phoneNumber || 'N/A'}</td>
+                    <td>{doctor.mobileNumber || 'N/A'}</td>
+                    <td>{doctor.clinicName || 'N/A'}</td>
                     <td>{doctor.locationId?.name || doctor.locationId?.address || 'N/A'}</td>
-                    <td>
-                      {doctor.createdAt 
-                        ? new Date(doctor.createdAt).toLocaleDateString('en-IN', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })
-                        : 'N/A'}
-                    </td>
-                    {isAdmin && (
                       <td>
-                        <button
-                          className="view-details-btn"
-                          onClick={() => handleEdit(doctor._id)}
-                          style={{ width: 'auto', minWidth: '100px' }}
-                        >
-                          <Edit2 size={14} />
-                          Edit
-                        </button>
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          backgroundColor: doctor.status === 'active' ? '#D1FAE5' : '#FEE2E2',
+                          color: doctor.status === 'active' ? '#065F46' : '#991B1B'
+                        }}>
+                          {doctor.status || 'N/A'}
+                        </span>
                       </td>
-                    )}
-                  </tr>
-                ))
+                      {isAdmin && (
+                        <td>
+                          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <button
+                              onClick={() => handleEdit(doctor._id)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#3B82F6',
+                                transition: 'color 0.2s'
+                              }}
+                              onMouseEnter={(e) => e.target.style.color = '#2563EB'}
+                              onMouseLeave={(e) => e.target.style.color = '#3B82F6'}
+                              title="Edit"
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(doctor)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#EF4444',
+                                transition: 'color 0.2s'
+                              }}
+                              onMouseEnter={(e) => e.target.style.color = '#DC2626'}
+                              onMouseLeave={(e) => e.target.style.color = '#EF4444'}
+                              title="Delete"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="mobile-cards-container">
+          {filteredDoctors.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+              {loading ? 'Loading...' : 'No doctors found'}
+            </div>
+          ) : (
+            paginatedDoctors.map((doctor) => (
+              <div key={doctor._id} className="transaction-card">
+                <div className="card-row">
+                  <span className="card-label">Name</span>
+                  <span className="card-value">{doctor.name || 'N/A'}</span>
+                </div>
+                <div className="card-row">
+                  <span className="card-label">Mobile Number</span>
+                  <span className="card-value">{doctor.mobileNumber || 'N/A'}</span>
+                </div>
+                <div className="card-row">
+                  <span className="card-label">Clinic Name</span>
+                  <span className="card-value">{doctor.clinicName || 'N/A'}</span>
+                </div>
+                <div className="card-row">
+                  <span className="card-label">Location</span>
+                  <span className="card-value">{doctor.locationId?.name || doctor.locationId?.address || 'N/A'}</span>
+                </div>
+                <div className="card-row">
+                  <span className="card-label">Status</span>
+                  <span className="card-value">
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      backgroundColor: doctor.status === 'active' ? '#D1FAE5' : '#FEE2E2',
+                      color: doctor.status === 'active' ? '#065F46' : '#991B1B'
+                    }}>
+                      {doctor.status || 'N/A'}
+                    </span>
+                  </span>
+                </div>
+                {isAdmin && (
+                  <div className="card-actions">
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'center' }}>
+                      <button
+                        onClick={() => handleEdit(doctor._id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#3B82F6',
+                          transition: 'color 0.2s'
+                        }}
+                        title="Edit"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(doctor)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#EF4444',
+                          transition: 'color 0.2s'
+                        }}
+                        title="Delete"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
 
         {/* Pagination Controls */}
@@ -287,10 +433,101 @@ function Doctors() {
       <UserModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
-        onSuccess={handleUserCreated}
-        userId={editingUserId}
+        onSuccess={handleDoctorCreated}
+        personId={editingDoctorId}
         userRole="doctor"
       />
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="modal-overlay" onClick={handleDeleteCancel}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <AlertTriangle size={24} color="#EF4444" />
+                Confirm Delete
+              </h2>
+              <button className="modal-close-btn" onClick={handleDeleteCancel}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: '32px' }}>
+              <p style={{ 
+                fontSize: '16px', 
+                color: 'var(--text-primary)', 
+                marginBottom: '24px',
+                lineHeight: '1.6'
+              }}>
+                Are you sure you want to delete <strong>{deletingDoctor?.name}</strong>? This action cannot be undone.
+              </p>
+
+              <div style={{ 
+                display: 'flex', 
+                gap: '12px', 
+                justifyContent: 'flex-end' 
+              }}>
+                <button
+                  onClick={handleDeleteCancel}
+                  disabled={deleting}
+                  style={{
+                    padding: '12px 24px',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    borderRadius: '8px',
+                    border: '2px solid var(--border-color)',
+                    background: 'var(--card-bg)',
+                    color: 'var(--text-primary)',
+                    cursor: deleting ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    opacity: deleting ? 0.6 : 1
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!deleting) {
+                      e.target.style.background = 'var(--bg-primary)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!deleting) {
+                      e.target.style.background = 'var(--card-bg)'
+                    }
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={deleting}
+                  style={{
+                    padding: '12px 24px',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: '#EF4444',
+                    color: 'white',
+                    cursor: deleting ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    opacity: deleting ? 0.6 : 1
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!deleting) {
+                      e.target.style.background = '#DC2626'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!deleting) {
+                      e.target.style.background = '#EF4444'
+                    }
+                  }}
+                >
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

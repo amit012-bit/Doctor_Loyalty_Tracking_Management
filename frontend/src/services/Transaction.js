@@ -68,3 +68,10 @@ export const verifyOTP = async (transactionId, otp) => {
   );
 };
 
+export const resendOTP = async (transactionId) => {
+  return await axios.post(`${ENDPOINT_URL.TRANSACTIONS}/${transactionId}/resend-otp`, 
+    {},
+    { headers: getAuthHeaders() }
+  );
+};
+

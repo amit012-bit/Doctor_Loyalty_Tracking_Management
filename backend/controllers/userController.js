@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import Executive from '../models/Executive.js';
+import PlatformSettings from '../models/PlatformSettings.js';
 
 const generateToken = (userId) => {
   return jwt.sign(
@@ -9,24 +11,38 @@ const generateToken = (userId) => {
   );
 };
 
+// Generate random password
+const generateRandomPassword = () => {
+  const length = 8;
+  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return password;
+};
+
 export const registerUser = async (req, res, next) => {
   try {
-    const { name, email, password, role, locationId, phoneNumber } = req.body;
+    const { name, username, role, locationId, phoneNumber } = req.body;
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'User with this email already exists'
+        message: 'User with this username already exists'
       });
     }
+
+    // Generate random password
+    const password = generateRandomPassword();
 
     // Create new user
     const user = await User.create({
       name,
-      email,
-      password,
+      username,
+      password, // Store password in plain text
       role: role || 'user',
       locationId,
       phoneNumber
@@ -40,7 +56,8 @@ export const registerUser = async (req, res, next) => {
       message: 'User registered successfully',
       data: {
         user,
-        token
+        token,
+        password // Return generated password so it can be shared with user
       }
     });
 
@@ -51,51 +68,88 @@ export const registerUser = async (req, res, next) => {
 
 export const loginUser = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    console.log(email, password);
+    const { username, password } = req.body;
 
     // Validate input
-    if (!email || !password) {
+    if (!username || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide email and password'
+        message: 'Please provide username and password'
       });
     }
 
-    // Find user and include password for comparison
-    const user = await User.findOne({ email }).select('+password');
-    console.log(user, '------user------');
+    let user = null;
+    let userType = null;
+
+    // First, try to find in User collection (admin, accountant, superadmin)
+    user = await User.findOne({ username }).select('+password');
+    if (user) {
+      userType = 'user';
+    } else {
+      // If not found in User, try Executive collection
+      user = await Executive.findOne({ username }).select('+password');
+      if (user) {
+        userType = 'executive';
+      }
+    }
+
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid username or password'
       });
     }
 
+    // Verify password (plain text comparison)
+    const isPasswordValid = user.comparePassword(password);
 
-    // Verify password
-    const isPasswordValid = await user.comparePassword(password);
-    console.log(isPasswordValid, '------isPasswordValid------');
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid username or password'
       });
+    }
+
+    // Check platform status for executives and accountants
+    if (userType === 'executive' || (userType === 'user' && user.role === 'accountant')) {
+      const platformSettings = await PlatformSettings.getSettings();
+      if (!platformSettings.isEnabled) {
+        return res.status(503).json({
+          success: false,
+          message: 'Platform is currently disabled. Please contact your administrator.',
+          platformDisabled: true
+        });
+      }
     }
 
     // Generate token
     const token = generateToken(user._id);
 
+    // Prepare user response based on type
+    const userResponse = {
+      _id: user._id,
+      name: user.name,
+      username: user.username
+    };
+
+    // Add role for User collection (admin, accountant, superadmin)
+    if (userType === 'user') {
+      userResponse.role = user.role;
+      userResponse.phoneNumber = user.phoneNumber;
+      userResponse.locationId = user.locationId;
+    } else {
+      // For Executive collection
+      userResponse.role = 'executive';
+      userResponse.phoneNumber = user.phoneNumber;
+      userResponse.locationId = user.locationId;
+      userResponse.status = user.status;
+    }
+
     res.json({
       success: true,
       message: 'Login successful',
       data: {
-        user: {
-          _id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role
-        },
+        user: userResponse,
         token
       }
     });
