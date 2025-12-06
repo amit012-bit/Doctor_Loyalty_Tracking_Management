@@ -5,6 +5,7 @@ import LoyaltyRewardOverview from './components/LoyaltyRewardOverview'
 import MyProfile from './components/MyProfile'
 import Doctors from './components/Doctors'
 import Executives from './components/Executives'
+import Admins from './components/Admins'
 import './App.css'
 import Login from './components/Login'
 
@@ -62,6 +63,8 @@ function App() {
         return <Doctors />
       case 'executives':
         return <Executives />
+      case 'admins':
+        return <Admins />
       case 'profile':
         return <MyProfile currentUser={user} />
       default:

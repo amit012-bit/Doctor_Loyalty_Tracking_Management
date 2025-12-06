@@ -12,45 +12,41 @@ if (!MONGODB_URI) {
 
 const runMigration = async () => {
   try {
+    console.log('🔄 Connecting to MongoDB...');
     await mongoose.connect(MONGODB_URI);
+    console.log('✅ Connected to MongoDB');
+
     const db = mongoose.connection.db;
-    
-    console.log('🔍 Checking for email index in User collection...');
-    
-    const collection = db.collection('users');
+    const collection = db.collection('User');
+
+    // Check if email_1 index exists
     const indexes = await collection.indexes();
-    
-    console.log('📋 Current indexes:', indexes.map(idx => idx.name));
-    
-    // Find and drop the email index
-    const emailIndex = indexes.find(idx => idx.key && idx.key.email);
-    
+    const emailIndex = indexes.find(idx => idx.name === 'email_1');
+
     if (emailIndex) {
-      console.log(`🗑️  Dropping email index: ${emailIndex.name}`);
-      await collection.dropIndex(emailIndex.name);
-      console.log('✅ Email index dropped successfully.');
+      console.log('📋 Found email_1 index. Dropping it...');
+      await collection.dropIndex('email_1');
+      console.log('✅ Successfully dropped email_1 index');
     } else {
-      console.log('ℹ️  No email index found. Nothing to drop.');
+      console.log('ℹ️  email_1 index not found. Nothing to do.');
     }
-    
-    // Verify username index exists
-    const usernameIndex = indexes.find(idx => idx.key && idx.key.username);
+
+    // Also check for username_1 index and create if it doesn't exist
+    const usernameIndex = indexes.find(idx => idx.name === 'username_1');
     if (!usernameIndex) {
-      console.log('📝 Creating username index...');
-      await collection.createIndex({ username: 1 }, { unique: true });
-      console.log('✅ Username index created successfully.');
+      console.log('📋 Creating username_1 unique index...');
+      await collection.createIndex({ username: 1 }, { unique: true, name: 'username_1' });
+      console.log('✅ Successfully created username_1 unique index');
     } else {
-      console.log('✅ Username index already exists.');
+      console.log('ℹ️  username_1 index already exists.');
     }
-    
-    console.log('✅ Migration completed successfully.');
+
+    console.log('✅ Migration completed successfully');
+    process.exit(0);
   } catch (error) {
     console.error('❌ Migration failed:', error);
-    process.exitCode = 1;
-  } finally {
-    await mongoose.disconnect();
+    process.exit(1);
   }
 };
 
 runMigration();
-

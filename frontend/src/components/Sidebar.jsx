@@ -1,5 +1,5 @@
 import './Sidebar.css'
-import { Stethoscope, Activity } from 'lucide-react'
+import { Stethoscope, Activity, Shield } from 'lucide-react'
 
 function Sidebar({ activeItem, onItemClick, userRole, onLogout, isOpen, onClose }) {
   // All possible menu items
@@ -28,6 +28,12 @@ function Sidebar({ activeItem, onItemClick, userRole, onLogout, isOpen, onClose 
         </svg>
       ),
       roles: ['admin', 'superadmin', 'accountant'] // Executives cannot see doctors/executives tabs
+    },
+    {
+      id: 'admins',
+      label: 'Admins',
+      icon: <Shield size={20} />,
+      roles: ['superadmin'] // Only superadmin can access admins tab
     }
   ]
   
